@@ -558,6 +558,18 @@ function renderAdminBar() {
   const bought = state.items.filter((i) => i.purchased).length;
   $('#admin-summary').textContent =
     `${bought} af ${total} ${isSingular(total) ? 'gjöf' : 'gjöfum'} ${isSingular(bought) ? 'keypt' : 'keyptar'}`;
+  // Point out gifts that seem to be in the wrong category (opens the proposal in "Flokkar").
+  const wrong = categoryMoves().length;
+  const hint = $('#admin-sort-hint');
+  hint.hidden = wrong === 0;
+  hint.textContent = `✨ ${wrong} ${wrong === 1 ? 'gjöf virðist' : 'gjafir virðast'} í röngum flokki – raða`;
+}
+
+/** Gifts whose name clearly fits another category: [{ item, to }]. */
+function categoryMoves() {
+  return state.items
+    .map((item) => ({ item, to: suggestCategory(`${item.name} ${item.description || ''}`, state.categories) }))
+    .filter((m) => m.to && m.to !== m.item.categoryId);
 }
 
 /* ---------- chips (updated in place so keyboard focus is kept) ---------- */
@@ -1981,11 +1993,17 @@ fCategory.addEventListener('change', () => {
 });
 
 // "Flokka gjafir sjálfkrafa": propose moving gifts whose name clearly fits another category.
+$('#admin-sort-hint').addEventListener('click', () => {
+  renderCatsDialog();
+  $('#cat-new-form').reset();
+  showModal(dlgCats, null);
+  $('#auto-sort-btn').click();
+  $('#auto-sort-box').scrollIntoView({ block: 'nearest' });
+});
+
 $('#auto-sort-btn').addEventListener('click', () => {
   const box = $('#auto-sort-box');
-  const moves = state.items
-    .map((item) => ({ item, to: suggestCategory(`${item.name} ${item.description || ''}`, state.categories) }))
-    .filter((m) => m.to && m.to !== m.item.categoryId);
+  const moves = categoryMoves();
   if (!moves.length) {
     box.replaceChildren(h('p', { class: 'muted small' }, 'Allar gjafir virðast vera í réttum flokki.'));
     return;

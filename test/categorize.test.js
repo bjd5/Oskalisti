@@ -31,6 +31,19 @@ test('the other categories', () => {
   assert.equal(cat('Útivistarstóll'), 'utivist'); // a custom category by its own name
 });
 
+test('compound words: the main word is at the end (kokkahnífur, eggjapískur)', () => {
+  assert.equal(cat('KOKKAHNÍFUR 27CM - G-17'), 'eldhusid');
+  assert.equal(cat('SKÆRI 21CM - GKS-210'), 'eldhusid');
+  assert.equal(cat('Töng - GS-28'), 'eldhusid');
+  assert.equal(cat('PROFI PLUS - PÍSKUR 30CM'), 'bakstur');
+  assert.equal(cat('Ibili Bollamál stál 4stk'), 'bakstur');
+  assert.equal(cat('Funktion Mælikanna glær 300ml'), 'bakstur'); // not "kanna" → Borðstofan
+  assert.equal(cat('APS Mæliskeiðasett stál 4stk á hring'), 'bakstur');
+  assert.equal(cat('Kitchenaid Sleikja svört'), 'bakstur');
+  assert.equal(cat('Blómapottur úr leir'), 'heimilid'); // not "pottur" → Í eldhúsið
+  assert.equal(cat('Hnífapör fyrir 6'), 'bordstofan');
+});
+
 test('no guess when nothing matches, and "Annað" is never suggested', () => {
   assert.equal(cat('Gjafabréf í leikhús'), '');
   assert.equal(cat(''), '');

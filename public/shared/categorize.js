@@ -2,8 +2,7 @@
 // Pure ESM, no dependencies: used by the browser (item dialog, "Flokka gjafir sjálfkrafa") and tests.
 //
 // Each category has keyword stems (lower-case, Icelandic letters folded: þ→th, ð→d, æ→ae, ö→o,
-// accents removed). A word in the gift's name matches a stem when it starts with it, or – for
-// stems of MIN_INNER+ letters – contains it (Icelandic compounds such as "rafmagnshraerivel").
+// accents removed). A word in the gift's name matches a stem as described at stemHits().
 // Custom categories (e.g. "Útivist") also match their own name.
 
 /** Keyword stems per category id (ids of the default categories plus common custom ones). */
@@ -13,6 +12,7 @@ export const CATEGORY_KEYWORDS = {
     'muffins', 'cupcake', 'braudform', 'formkok', 'tertu', 'kokugrind', 'kokuspad', 'kokudisk',
     'skal', 'hraerivel', 'hraeriv', 'theytar', 'sleikj', 'sigti', 'smjorpapp', 'bokunarpapp',
     'eldhusvog', 'vog', 'deigskaf', 'deig', 'piparkok', 'kokusk', 'skreyt', 'sprautupok', 'kanilsn',
+    'pisk', 'bollamal', 'maelibikar', 'hveiti', 'bokunarform', 'formkaka', 'springform',
   ],
   eldhusid: [
     'pott', 'pann', 'wok', 'hnif', 'nakiri', 'santoku', 'bretti', 'skurdarbret', 'ausa', 'spadi',
@@ -20,6 +20,7 @@ export const CATEGORY_KEYWORDS = {
     'hradsud', 'blandar', 'matvinnslu', 'safapress', 'airfryer', 'braudrist', 'eldfast', 'steypujarn',
     'svunt', 'viskastykk', 'pottalepp', 'ofnhansk', 'brynir', 'bryni', 'hnifablokk', 'hnifasegul',
     'mortel', 'sitronupress', 'dosaopnar', 'grill', 'espresso', 'tekann', 'teketil',
+    'skaeri', 'kokkahnif', 'flysjar', 'skraelar', 'rifjarn', 'ostaskeri', 'eggjaskeri',
   ],
   bordstofan: [
     'disk', 'matardisk', 'glas', 'glos', 'vinglas', 'vinglos', 'bjorglas', 'bjorglos', 'kampavin', 'bolli', 'bollar', 'krus',
@@ -52,11 +53,21 @@ export function foldWords(text) {
     .filter((w) => w.length > 1);
 }
 
-// Stems this long may also match inside a compound word ("rafmagnshrærivél" ⊃ "hraerivel");
-// shorter ones only at the start ("salatskál" does not match "skal", it matches "salatskal").
+// Stems this long may also match anywhere inside a compound word ("rafmagnshrærivél" ⊃ "hraerivel").
 const MIN_INNER = 6;
 
-const stemHits = (word, stem) => word.startsWith(stem) || (stem.length >= MIN_INNER && word.includes(stem));
+/**
+ * A word matches a stem when it starts with it, contains a long stem, or – Icelandic compounds put
+ * the main word last – ends with it plus an inflection ending of up to 3 letters
+ * ("kokkahnífur" → "hnif", "eggjapískur" → "pisk"). When several stems match, the longest wins in
+ * suggestCategory, so "salatskál" (Borðstofan: "salatskal") beats "skál" (Bakstur: "skal").
+ */
+function stemHits(word, stem) {
+  if (word.startsWith(stem)) return true;
+  if (stem.length >= MIN_INNER && word.includes(stem)) return true;
+  const at = word.lastIndexOf(stem);
+  return stem.length >= 3 && at > 0 && word.length - (at + stem.length) <= 3;
+}
 
 /**
  * Best category id for a gift, or '' when nothing matches.
