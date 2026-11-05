@@ -4,6 +4,8 @@
 // createElement/textContent via the h() helper, and URLs are only used for href/src when they
 // are http(s) (see safeUrl()).
 
+import './compat.js'; // fallbacks for older Safari (<dialog>, structuredClone, randomUUID)
+
 /* ======================================================================
    Constants & helpers
    ====================================================================== */
@@ -487,6 +489,16 @@ function toast(message, type = 'info') {
   toastEl.textContent = message;
   toastTimer = setTimeout(hideToast, type === 'error' ? 6500 : 3500);
 }
+// Show unexpected errors instead of failing silently (helps when a browser lacks something).
+window.addEventListener('error', (e) => {
+  if (e.message) toast(`Villa: ${e.message}`, 'error');
+});
+window.addEventListener('unhandledrejection', (e) => {
+  const reason = e.reason;
+  if (reason?.name === 'AbortError') return;
+  toast(`Villa: ${reason?.message || reason || 'óþekkt'}`, 'error');
+});
+
 function hideToast() {
   if (supportsPopover) {
     try {
