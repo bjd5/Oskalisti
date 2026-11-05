@@ -21,41 +21,46 @@ hvort sem það er í jólagjöf, afmælisgjöf, innflutningsgjöf eða við ön
 - **Haka við keyptar gjafir**, breyta, eyða, merkja sem „efst á óskalistanum“.
 - Búa til, endurnefna og eyða flokkum og breyta titli/texta síðunnar.
 
-## Á GitHub Pages (ókeypis, enginn þjónn)
+## Á GitHub Pages + Google Sheet (ókeypis, engir lyklar)
 
-Síðan keyrir beint á GitHub Pages: **https://bjd5.github.io/Oskalisti/**
+Síðan keyrir á GitHub Pages: **https://bjd5.github.io/Oskalisti/**
 
-Þar er enginn vefþjónn, svo hún virkar svona:
-- Óskalistinn er skráin [`public/data/oskalisti.json`](public/data/oskalisti.json) í þessu repoi.
-- **Aðgangskóðinn er GitHub-lykill** (fine-grained personal access token). Þegar þið bætið við gjöf eða hakið við
-  vistar síðan breytinguna beint í skrána í repoinu. Þá fer GitHub Action af stað og eftir **um það bil mínútu**
-  sjá gestir breytinguna (þið sjáið hana strax).
-- **Sjálfvirk vöruleit** (verð, verslun, mynd) þarf **Claude API-lykil** sem þið setjið inn við innskráningu.
-  Claude leitar þá á netinu fyrir ykkur, bæði eftir nafni og eftir hlekk. Án lykils fyllið þið út upplýsingarnar sjálf.
-- Báðir lyklarnir eru **bara geymdir í ykkar vafra** (localStorage). Þeir fara aldrei í repoið. „Skrá út“ eyðir þeim.
+GitHub Pages getur ekki vistað neitt sjálft, svo **óskalistinn er geymdur í Google Sheet**:
+- Gestir lesa listann úr töflureikninum. Þeir þurfa ekkert að skrá sig inn.
+- Þið skráið ykkur inn með **ykkar eigin aðgangskóða**, sem er skrifaður í töflureikninn
+  (flipinn **Aðgangur**, reitur **B1**). Engir API-lyklar og engin GitHub-innskráning.
+  Kóðanum breytið þið hvenær sem er með því að skrifa nýjan kóða í reitinn.
+- Allt sem þið bætið við eða hakið við vistast strax í töflureikninum. Þið getið líka skoðað og
+  lagað gjafirnar beint í honum (t.d. skrifað „já“ í dálkinn *Keypt*).
+- **Vöruleit:** límið inn hlekk á vöruna og síðan les verð, nafn, verslun og mynd af vörusíðunni.
+  Leit eftir nafni (án hlekks) er „best-effort“.
 
-### Uppsetning (einu sinni)
+### Uppsetning (einu sinni, um 5 mínútur)
 
-1. **Gera repoið public:** Settings → General → neðst „Danger Zone“ → *Change visibility* → Public.
-   (GitHub Pages er bara ókeypis fyrir public repo. Það sjást engir lyklar eða kóðar, bara kóðinn og óskalistinn.)
-2. **Setja kóðann á `main`:** sameinið (merge) þessa grein inn í `main`.
-3. **Kveikja á Pages:** Settings → Pages → *Build and deployment* → Source: **GitHub Actions**.
-   Keyrið svo „GitHub Pages“-workflowið undir Actions (eða ýtið einhverju á `main`).
-4. **Búa til aðgangskóða:** https://github.com/settings/personal-access-tokens/new
-   - *Repository access:* Only select repositories → **Oskalisti**
-   - *Permissions → Repository permissions → Contents:* **Read and write**
-   - Afritið lykilinn (`github_pat_…`). Hann er aðgangskóðinn. Hver sem fær hann getur breytt listanum,
-     og þið getið afturkallað hann hvenær sem er.
-5. *(Valfrjálst)* **Claude API-lykill** fyrir sjálfvirka leit: https://console.anthropic.com → API keys.
-   Hver leit kostar örlítið.
-6. Farið á síðuna → **🔑 Aðgangur** neðst → límið inn GitHub-lykilinn (og Claude-lykilinn) → Skrá inn.
+1. Búið til nýjan Google Sheet: https://sheets.new (t.d. með nafninu „Óskalisti“).
+2. Í töflureikninum: **Extensions → Apps Script**. Eyðið því sem er í ritlinum og límið inn
+   allan kóðann úr [`apps-script/Code.gs`](apps-script/Code.gs). Vistið (Ctrl/Cmd + S).
+3. Veljið fallið **setup** í fellilistanum efst og ýtið á **Run**. Google biður um leyfi:
+   *Review permissions* → veljið reikninginn → *Advanced* → *Go to … (unsafe)* → *Allow*.
+   (Google varar við af því að þetta er ykkar eigin kóði sem Google hefur ekki yfirfarið.)
+4. Farið aftur í töflureikninn. Þar eru komnir flipar: *Gjafir, Flokkar, Stillingar, Aðgangur*.
+   Skrifið **aðgangskóðann ykkar í reit B1** í flipanum *Aðgangur*.
+5. Í Apps Script: **Deploy → New deployment** → tannhjólið → **Web app**:
+   - *Execute as:* **Me**
+   - *Who has access:* **Anyone**
 
-Ef annað repo eða önnur grein er notuð þarf að breyta [`public/config.json`](public/config.json).
+   Ýtið á **Deploy** og afritið **Web app URL** (endar á `/exec`).
+6. Setjið slóðina í [`public/config.json`](public/config.json) sem `"url"` (eða sendið hana Claude).
+   Þegar breytingin er komin á `main` birtist síðan eftir um mínútu.
+7. Farið á síðuna → **🔑 Aðgangur** neðst → sláið inn kóðann → **+ Bæta við gjöf**.
+
+Ef `Code.gs` er uppfærður seinna: límið nýja kóðann inn og veljið **Deploy → Manage deployments →
+✏️ → Version: New version → Deploy** (þá helst sama slóð).
 
 ## Keyra á eigin tölvu (Node-þjónn)
 
-Í staðinn fyrir GitHub Pages er líka hægt að keyra síðuna sem venjulegan vefþjón. Þá er vöruleitin
-öflugri, því þjónninn getur sjálfur lesið vörusíður (líka án Claude-lykils).
+Í staðinn fyrir GitHub Pages + Google Sheet er líka hægt að keyra síðuna sem venjulegan vefþjón
+(þá er `public/config.json` hunsað og þjónninn geymir listann sjálfur).
 
 Þarf [Node.js](https://nodejs.org) 22.9 eða nýrra.
 
@@ -130,10 +135,11 @@ server/
   lookup/           vöruleit: lesa vörusíður, Claude-leit, DuckDuckGo-leit
 public/             vefsíðan sjálf (HTML/CSS/JS, engin build-skref) – þetta fer á GitHub Pages
   app.js            framendinn
-  github-backend.js „bakendi“ í vafranum fyrir GitHub Pages (vistar í repoið)
-  shared/           gagnareglur og Claude-leit sem bæði þjónninn og vafrinn nota
-  data/             óskalistinn sjálfur á GitHub Pages
-  vendor/           Anthropic SDK pakkað fyrir vafrann (`npm run build:vendor`)
+  sheets-backend.js tengingin við Google Sheet (notuð á GitHub Pages)
+  config.json       slóðin á Apps Script-ið
+  shared/           gagnareglur sem bæði þjónninn og vafrinn nota
+  vendor/lookup.js  vörusíðulesarinn pakkaður fyrir vafrann (`npm run build:vendor`)
+apps-script/Code.gs kóðinn sem fer í Google Sheet (Extensions → Apps Script)
 .github/workflows/  birtir public/ á GitHub Pages við hverja breytingu á main
 test/               prófanir (`npm test`)
 ```

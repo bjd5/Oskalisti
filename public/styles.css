@@ -688,7 +688,3 @@ a.offer:hover { border-color: var(--accent); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
-
-/* Fields that only apply on GitHub Pages (see github-backend.js) */
-.github-only { display: none; }
-:root[data-backend="github"] .github-only { display: block; }

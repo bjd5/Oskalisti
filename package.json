@@ -11,7 +11,7 @@
     "start": "node --env-file-if-exists=.env server/index.js",
     "dev": "node --env-file-if-exists=.env --watch server/index.js",
     "test": "node --test \"test/**/*.test.js\"",
-    "build:vendor": "esbuild node_modules/@anthropic-ai/sdk/index.mjs --bundle --format=esm --platform=browser --minify --legal-comments=inline --outfile=public/vendor/anthropic-sdk.js"
+    "build:vendor": "esbuild scripts/lookup-browser-entry.js --bundle --format=esm --platform=browser --minify --legal-comments=inline --alias:cheerio=cheerio/slim --outfile=public/vendor/lookup.js"
   },
   "license": "MIT",
   "dependencies": {

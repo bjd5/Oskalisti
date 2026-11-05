@@ -1,6 +1,5 @@
-// Claude product search shared by the Node server (server/lookup/ai.js) and the browser
-// (GitHub Pages mode, where the admin's own API key is used). No Node or DOM dependencies:
-// the caller passes in an Anthropic SDK client and an error-message function.
+// Claude product search (optional, Node server only): prompt, tools and the request loop.
+// No SDK import here: the caller passes in an Anthropic client and an error-message function.
 
 import { storeNameFromUrl } from './stores.js';
 
