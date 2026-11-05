@@ -688,3 +688,17 @@ a.offer:hover { border-color: var(--accent); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
+
+/* ---------- Older browsers without <dialog> (see compat.js) ---------- */
+.no-dialog dialog:not([open]) { display: none; }
+.no-dialog dialog[open] {
+  position: fixed; top: 50%; left: 50%; z-index: 1000; margin: 0;
+  transform: translate(-50%, -50%);
+}
+.dialog-backdrop {
+  position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 999;
+  background: rgba(30, 22, 14, 0.5);
+}
+.dialog-backdrop[hidden] { display: none; }
+.no-dialog body.dialog-open { overflow: hidden; }
+.no-dialog .toast { z-index: 1001; }
