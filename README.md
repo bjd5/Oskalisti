@@ -34,6 +34,12 @@ GitHub Pages getur ekki vistað neitt sjálft, svo **óskalistinn er geymdur í 
   lagað gjafirnar beint í honum (t.d. skrifað „já“ í dálkinn *Keypt*).
 - **Vöruleit:** límið inn hlekk á vöruna og síðan les verð, nafn, verslun og mynd af vörusíðunni.
   Leit eftir nafni (án hlekks) er „best-effort“.
+- **Verðsamanburður:** þegar þið veljið vöru leitar síðan sjálfkrafa að sömu vöru í öðrum íslenskum
+  vefverslunum (.is) og sýnir verðin, ódýrast efst. Þið bætið þeim verslunum við sem þið viljið
+  (eða öllum). Hnappurinn **„Bera saman verð í öðrum verslunum“** gerir það sama hvenær sem er.
+  Gestir sjá svo allar verslanirnar með ódýrustu merkta. Leitin notar DuckDuckGo og Bing (engir
+  lyklar) og ber aðeins saman vörur með sömu stærð/tölum og flest sömu orð í heitinu –
+  athugið samt að varan sé sú sama áður en henni er bætt við.
 
 ### Uppsetning (einu sinni, um 5 mínútur)
 

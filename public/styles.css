@@ -704,3 +704,24 @@ a.offer:hover { border-color: var(--accent); }
 .dialog-backdrop[hidden] { display: none; }
 .no-dialog body.dialog-open { overflow: hidden; }
 .no-dialog .toast { z-index: 1001; }
+
+/* ---------- Price comparison (item dialog) ---------- */
+.compare { margin-top: 12px; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.compare-results { width: 100%; }
+.compare-results:empty { display: none; }
+.compare-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.compare-title { font-weight: 600; margin: 0; }
+.compare-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.compare-row {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 8px 10px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface);
+}
+.compare-row.is-cheapest { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.compare-main { display: flex; flex-direction: column; gap: 2px; flex: 1 1 180px; min-width: 0; }
+.compare-store { font-weight: 600; color: inherit; }
+.compare-name { font-size: 0.82rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.compare-price { font-weight: 700; white-space: nowrap; }
+.cheapest-badge {
+  align-self: flex-start; font-size: 0.72rem; font-weight: 700; letter-spacing: .02em;
+  padding: 1px 8px; border-radius: 999px; background: var(--accent); color: var(--accent-ink);
+}

@@ -24,12 +24,19 @@ async function fakeLookup(query, options) {
   };
 }
 
+const compareCalls = [];
+async function fakeCompare(name, options) {
+  compareCalls.push({ name, options });
+  if (name === 'villa') throw new Error('search down');
+  return { offers: [{ name, store: 'Hrím', url: 'https://hrim.is/x', price: 29990, currency: 'ISK', originalPrice: 29990, imageUrl: '' }], searched: 3 };
+}
+
 async function startApp({ code = ADMIN_CODE, aiSearchEnabled = () => true, now } = {}) {
   const dir = await mkdtemp(path.join(tmpdir(), 'oskalisti-server-'));
   const store = createStore({ dataDir: dir });
   await store.load();
   const auth = createAuth({ adminCode: code, now });
-  const app = createApp({ store, auth, lookup: fakeLookup, aiSearchEnabled });
+  const app = createApp({ store, auth, lookup: fakeLookup, compare: fakeCompare, aiSearchEnabled });
   const listening = await new Promise((resolve, reject) => {
     const srv = app.listen(0, '127.0.0.1', (error) => (error ? reject(error) : resolve(srv)));
   });
@@ -347,6 +354,20 @@ test('lookup route validates the query and maps failures to 502', async () => {
   const failed = await admin('POST', '/api/lookup', { body: { query: 'villa' } });
   assert.equal(failed.status, 502);
   assert.deepEqual(failed.body, { error: 'Leit mistókst. Prófaðu aftur eða settu inn upplýsingar handvirkt.' });
+});
+
+test('compare route: admin only, passes name and known URL, maps failures to 502', async () => {
+  assert.equal((await api('POST', '/api/compare', { body: { name: 'Global Nakiri' } })).status, 401);
+  assert.equal((await admin('POST', '/api/compare', { body: { name: '  ' } })).status, 400);
+  const res = await admin('POST', '/api/compare', { body: { name: ' Global Nakiri ', url: 'https://kokka.is/nakiri' } });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.offers[0].store, 'Hrím');
+  const call = compareCalls.at(-1);
+  assert.equal(call.name, 'Global Nakiri');
+  assert.equal(call.options.url, 'https://kokka.is/nakiri');
+  assert.ok(call.options.signal instanceof AbortSignal);
+  const failed = await admin('POST', '/api/compare', { body: { name: 'villa' } });
+  assert.equal(failed.status, 502);
 });
 
 test('unknown /api routes give a JSON 404', async () => {

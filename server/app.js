@@ -60,6 +60,7 @@ export function createApp({
   store,
   auth,
   lookup,
+  compare = async () => ({ offers: [], searched: 0 }),
   aiSearchEnabled = () => Boolean(process.env.ANTHROPIC_API_KEY),
   publicDir = DEFAULT_PUBLIC_DIR,
 }) {
@@ -84,7 +85,7 @@ export function createApp({
   api.use(adminRouter({ auth, aiSearchEnabled }));
   api.use(itemsRouter({ store, auth }));
   api.use(categoriesRouter({ store, auth }));
-  api.use(lookupRouter({ auth, lookup }));
+  api.use(lookupRouter({ auth, lookup, compare }));
   api.use((req, res) => res.status(404).json({ error: 'Fannst ekki.' }));
 
   app.use('/api', api);

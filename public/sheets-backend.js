@@ -163,6 +163,20 @@ export function createSheetsBackend(config, { fetchImpl = (...args) => globalThi
     }
   }
 
+  /** Other Icelandic shops selling the same product, cheapest first (compare.js). */
+  async function compare(body, signal) {
+    requireLogin();
+    const name = typeof body?.name === 'string' ? body.name.trim() : '';
+    if (!name) throw new BackendError('Skrifaðu heiti vörunnar fyrst.', 400);
+    const { compareWith } = await importLookup();
+    const fetchPage = async (url) => {
+      const page = await post('fetch', { url }, signal);
+      if (page.status >= 400) throw new BackendError(`Síðan svaraði með villu ${page.status}.`, 502);
+      return { url, text: page.text || '' };
+    };
+    return compareWith(fetchPage, { name, url: typeof body?.url === 'string' ? body.url : '' }, { signal, logger: null });
+  }
+
   /** Same contract as the Node server's /api routes. */
   async function request(path, { method = 'GET', body = {}, signal } = {}) {
     const parts = new URL(path, 'http://x').pathname.replace(/^\/api\/?/, '').split('/').filter(Boolean).map(decodeURIComponent);
@@ -178,6 +192,7 @@ export function createSheetsBackend(config, { fetchImpl = (...args) => globalThi
       return { admin: false };
     }
     if (route === 'POST /lookup') return lookup(String(body?.query ?? '').trim(), signal);
+    if (route === 'POST /compare') return compare(body, signal);
 
     if (route === 'POST /items' && !id) return mutate((d) => operations.createItem(d, body));
     if (route === 'PUT /items' && id && !sub) return mutate((d) => operations.updateItem(d, id, body));
