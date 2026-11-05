@@ -27,6 +27,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      # Cache busting: stamp this commit on scripts/styles so browsers (Safari especially)
+      # never run an old app.js against new files after an update.
+      - run: node scripts/stamp-version.mjs public "${GITHUB_SHA::8}"
       - uses: actions/upload-pages-artifact@v3
         with:
           path: public
