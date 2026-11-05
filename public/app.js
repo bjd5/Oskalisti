@@ -657,7 +657,7 @@ function cardFor(item) {
   return el;
 }
 
-function offerEl(o) {
+function offerEl(o, cheapest = false) {
   const url = safeUrl(o.url);
   const store = o.store || hostOf(url) || 'Verslun';
   const kids = [
@@ -665,6 +665,7 @@ function offerEl(o) {
     h(
       'span',
       { class: 'offer-meta' },
+      cheapest ? h('span', { class: 'cheapest-badge' }, 'Ódýrast') : null,
       o.price != null ? kr(o.price) : null,
       url ? h('span', { class: 'offer-arrow', 'aria-hidden': 'true' }, '↗') : null,
     ),
@@ -698,12 +699,14 @@ function renderCard(item, cat) {
     : h('p', { class: 'price unknown' }, 'Verð óþekkt');
 
   const offers = [...item.offers].sort((a, b) => (a.price ?? Infinity) - (b.price ?? Infinity));
+  // Mark the cheapest shop when several shops list a price (price comparison).
+  const pricedCount = offers.filter((o) => o.price != null).length;
   const offersEl = offers.length
     ? h(
         'div',
         { class: 'offers' },
         h('p', { class: 'offers-label' }, 'Fáanlegt í:'),
-        h('ul', { class: 'offers-list' }, offers.map((o) => h('li', null, offerEl(o)))),
+        h('ul', { class: 'offers-list' }, offers.map((o, i) => h('li', null, offerEl(o, i === 0 && pricedCount > 1)))),
       )
     : null;
 
@@ -1292,6 +1295,8 @@ function openItemDialog(id) {
   const item = id ? state.items.find((i) => i.id === id) : null;
   if (id && !item) return;
   abortLookup();
+  abortCompare();
+  $('#compare-results').replaceChildren();
   itemForm.editingId = item ? item.id : null;
   $('#item-title').textContent = item ? 'Breyta gjöf' : 'Ný gjöf';
   $('#item-submit').textContent = item ? 'Vista breytingar' : 'Vista gjöf';
@@ -1328,7 +1333,10 @@ function openItemDialog(id) {
   showModal(dlgItem, item ? fName : $('#lookup-query'));
 }
 
-dlgItem.addEventListener('close', abortLookup);
+dlgItem.addEventListener('close', () => {
+  abortLookup();
+  abortCompare();
+});
 itemForm.el.addEventListener('input', () => {
   itemForm.dirty = true;
 });
@@ -1454,6 +1462,125 @@ fImage.addEventListener('input', () => {
 fCategory.addEventListener('change', () => {
   if (!safeUrl(fImage.value)) updateImagePreview();
 });
+
+/* ---------- price comparison: same product in other Icelandic shops ---------- */
+
+function abortCompare() {
+  if (itemForm.compareCtrl) {
+    itemForm.compareCtrl.abort();
+    itemForm.compareCtrl = null;
+  }
+}
+
+$('#compare-btn').addEventListener('click', () => runCompare({ auto: false }));
+
+async function runCompare({ auto }) {
+  const box = $('#compare-results');
+  const name = fName.value.trim();
+  if (!name) {
+    box.replaceChildren(h('p', { class: 'lookup-msg' }, 'Skrifaðu heiti vörunnar fyrst, þá get ég borið saman verð.'));
+    fName.focus();
+    return;
+  }
+  abortCompare();
+  const ctrl = new AbortController();
+  itemForm.compareCtrl = ctrl;
+  const url = readOfferRows().map((r) => safeUrl(r.urlEl.value)).find(Boolean) || '';
+  const btn = $('#compare-btn');
+  btn.disabled = true;
+  box.replaceChildren(
+    h(
+      'div',
+      { class: 'loading', role: 'status' },
+      h('span', { class: 'spinner', 'aria-hidden': 'true' }),
+      h('span', { class: 'loading-text' }, `Ber saman verð á „${name}“ í íslenskum vefverslunum…`),
+      h('button', { type: 'button', class: 'btn btn-outline btn-sm', onclick: () => ctrl.abort() }, 'Hætta við'),
+    ),
+  );
+  try {
+    const data = await adminApi('/api/compare', { method: 'POST', body: { name, url }, signal: ctrl.signal });
+    if (itemForm.compareCtrl !== ctrl) return;
+    renderCompare(data || {}, auto);
+  } catch (err) {
+    if (itemForm.compareCtrl !== ctrl && !ctrl.signal.aborted) return;
+    box.replaceChildren(
+      ctrl.signal.aborted
+        ? h('p', { class: 'lookup-msg' }, 'Hætt við verðsamanburð.')
+        : h('p', { class: 'lookup-msg is-error' }, err?.message || defaultError(0)),
+    );
+  } finally {
+    if (itemForm.compareCtrl === ctrl) itemForm.compareCtrl = null;
+    btn.disabled = false;
+  }
+}
+
+function renderCompare(data, auto) {
+  const box = $('#compare-results');
+  const offers = (Array.isArray(data.offers) ? data.offers.map(normResult) : []).filter((o) => safeUrl(o.url));
+  if (!offers.length) {
+    const msg = data.message || 'Fann engar aðrar íslenskar verslanir með þessa vöru.';
+    box.replaceChildren(h('p', { class: 'lookup-msg' }, auto ? `Verðsamanburður: ${msg}` : msg));
+    return;
+  }
+  offers.sort((a, b) => (a.price ?? Infinity) - (b.price ?? Infinity));
+  const current = minOfferPriceInForm();
+  const cheapest = Math.min(current ?? Infinity, ...offers.map((o) => o.price ?? Infinity));
+
+  const rows = offers.map((o) => {
+    const url = safeUrl(o.url);
+    const already = hasOfferUrl(url);
+    const addBtn = h('button', { type: 'button', class: 'btn btn-outline btn-sm' }, already ? '✓ Á listanum' : '+ Bæta við');
+    addBtn.disabled = already;
+    addBtn.addEventListener('click', () => {
+      addOfferFromResult(o);
+      addBtn.textContent = '✓ Á listanum';
+      addBtn.disabled = true;
+      syncAddAll();
+    });
+    return {
+      addBtn,
+      el: h(
+        'li',
+        { class: `compare-row${o.price === cheapest ? ' is-cheapest' : ''}` },
+        h(
+          'div',
+          { class: 'compare-main' },
+          h(
+            'a',
+            { class: 'compare-store', href: url, target: '_blank', rel: 'noopener noreferrer' },
+            o.store || hostOf(url),
+            h('span', { 'aria-hidden': 'true' }, ' ↗'),
+            h('span', { class: 'sr-only' }, ' (opnast í nýjum flipa)'),
+          ),
+          o.price === cheapest ? h('span', { class: 'cheapest-badge' }, 'Ódýrast') : null,
+          h('span', { class: 'compare-name' }, o.name || ''),
+        ),
+        h('span', { class: 'compare-price' }, o.price != null ? kr(o.price) : 'Verð óþekkt'),
+        addBtn,
+      ),
+    };
+  });
+
+  const addAll = h('button', { type: 'button', class: 'btn btn-soft btn-sm' }, '+ Bæta öllum við');
+  const syncAddAll = () => {
+    addAll.hidden = rows.every((r) => r.addBtn.disabled);
+  };
+  addAll.addEventListener('click', () => {
+    for (const r of rows) if (!r.addBtn.disabled) r.addBtn.click();
+  });
+  syncAddAll();
+
+  box.replaceChildren(
+    h(
+      'div',
+      { class: 'compare-head' },
+      h('p', { class: 'compare-title' }, `Verð í öðrum verslunum (${offers.length})`),
+      addAll,
+    ),
+    h('ul', { class: 'compare-list' }, rows.map((r) => r.el)),
+    h('p', { class: 'muted small' }, 'Verð eru sótt af vörusíðunum núna og geta breyst. Athugið að varan sé sú sama áður en þið bætið henni við.'),
+  );
+}
 
 /* ---------- lookup ---------- */
 
@@ -1600,6 +1727,8 @@ function resultCard(r) {
     card.classList.add('is-used');
     stateEl.textContent = '✓ Valið – sjá formið hér fyrir neðan';
     addBtn.disabled = true;
+    // Look for the same product in other Icelandic shops right away.
+    runCompare({ auto: true });
   });
   addBtn.addEventListener('click', () => {
     const added = addOfferFromResult(r);

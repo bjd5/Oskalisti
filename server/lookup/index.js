@@ -14,6 +14,8 @@ import { aiLookup, createAnthropicClient } from './ai.js';
 import { extractProduct, nameFromUrlSlug } from './extract.js';
 import { LookupFetchError } from './net.js';
 import { searchKeyless } from './search.js';
+import { compareWith } from './compare.js';
+import { safeFetch } from './net.js';
 import { storeNameFromUrl } from './stores.js';
 
 export { parsePrice, toIsk, APPROX_ISK_RATES } from './price.js';
@@ -194,4 +196,13 @@ export async function lookupProduct(
   if (!aiMessage) return response;
   // Tell the admin why AI search didn't help (e.g. invalid API key).
   return { ...response, message: response.message ? `${aiMessage} ${response.message}` : aiMessage };
+}
+
+/**
+ * Price comparison: other Icelandic shops selling `name` (see compare.js).
+ * Resolves { offers, searched, message? }.
+ */
+export function compareProduct(name, { url = '', signal, fetchImpl, dnsLookup, logger = console } = {}) {
+  const fetchPage = (u, opts = {}) => safeFetch(u, { ...opts, fetchImpl, dnsLookup });
+  return compareWith(fetchPage, { name, url }, { signal, logger });
 }

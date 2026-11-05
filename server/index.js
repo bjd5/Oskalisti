@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createApp } from './app.js';
 import { createAuth, resolveAdminCode } from './auth.js';
-import { lookupProduct, isAiSearchEnabled } from './lookup/index.js';
+import { compareProduct, lookupProduct, isAiSearchEnabled } from './lookup/index.js';
 import { createStore } from './store.js';
 
 const projectRoot = fileURLToPath(new URL('..', import.meta.url));
@@ -21,6 +21,7 @@ const app = createApp({
   store,
   auth,
   lookup: lookupProduct, // called as lookupProduct(query, { signal })
+  compare: compareProduct, // called as compareProduct(name, { url, signal })
   aiSearchEnabled: isAiSearchEnabled,
 });
 

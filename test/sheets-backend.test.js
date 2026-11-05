@@ -104,3 +104,35 @@ test('without a configured Apps Script URL the site explains what is missing', a
   const backend = createSheetsBackend({ url: '' });
   await assert.rejects(backend.request('/api/list'), { status: 503, message: /ekki enn tengd við Google Sheet/ });
 });
+
+test('price comparison runs the searches and product pages through the Apps Script', async () => {
+  const ddg = (links) => links.map(([u, t]) => `<a class="result__a" href="//duckduckgo.com/l/?uddg=${encodeURIComponent(u)}">${t}</a>`).join('');
+  const page = (name, price) =>
+    `<script type="application/ld+json">${JSON.stringify({ '@type': 'Product', name, offers: { price, priceCurrency: 'ISK' } })}</script>`;
+  const pages = {
+    'https://hrim.is/global-nakiri': page('Global Nakiri 18 cm', 29990),
+    'https://elko.is/global-nakiri': page('Global Nakiri 18cm', 27990),
+  };
+  const gs = fakeAppsScript({ pages });
+  const fetchImpl = async (url, init) => {
+    const req = init?.body ? JSON.parse(init.body) : null;
+    if (req?.action === 'fetch' && req.url.startsWith('https://html.duckduckgo.com/')) {
+      gs.state.fetched.push(req.url);
+      return new Response(JSON.stringify({ status: 200, text: ddg([
+        ['https://hrim.is/global-nakiri', 'Global Nakiri – Hrím'],
+        ['https://elko.is/global-nakiri', 'Global Nakiri – ELKO'],
+        ['https://kokka.is/global-nakiri', 'Global Nakiri – Kokka'],
+      ]) }));
+    }
+    return gs.fetchImpl(url, init);
+  };
+  const backend = createSheetsBackend({ url: URL_ }, { fetchImpl });
+  await assert.rejects(backend.request('/api/compare', { method: 'POST', body: { name: 'Global Nakiri 18 cm' } }), { status: 401 });
+  await backend.request('/api/admin/login', { method: 'POST', body: { code: CODE } });
+  const res = await backend.request('/api/compare', {
+    method: 'POST',
+    body: { name: 'Global Nakiri 18 cm', url: 'https://kokka.is/global-nakiri' },
+  });
+  assert.deepEqual(res.offers.map((o) => [o.store, o.price]), [['ELKO', 27990], ['Hrím', 29990]]);
+  assert.ok(!gs.state.fetched.includes('https://kokka.is/global-nakiri'), 'the shop we already have is skipped');
+});
