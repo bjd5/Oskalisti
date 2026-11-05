@@ -196,8 +196,69 @@ function productFromLd(node) {
     currency: offer?.currency ?? '',
     seller: offer?.seller ?? '',
     brand: cleanText(textOf(node.brand?.name ?? node.brand ?? ''), 100),
+    // Product identifiers (shop SKU, manufacturer part number, EAN/GTIN) – used to match the
+    // same product across shops (compare.js).
+    ids: ['sku', 'mpn', 'gtin', 'gtin8', 'gtin12', 'gtin13', 'gtin14', 'productID']
+      .map((k) => textOf(node[k]))
+      .filter(Boolean),
   };
 }
+
+// ---- Next.js page data (__NEXT_DATA__) ---------------------------------------------------
+// Some Icelandic shops (e.g. Líf og List) render product pages with Next.js and have no
+// JSON-LD or price meta tags; the product (name, price, brand, manufacturer SKU) is in the
+// embedded page data instead.
+
+const priceOfRecord = (o) =>
+  typeof o.price === 'number'
+    ? o.price
+    : o.price_range?.minimum_price?.final_price?.value ?? null;
+
+/** All product-like records in a Next.js page: objects with a name, a price and an identifier. */
+export function nextDataProducts(html) {
+  const m = /<script[^>]+id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/i.exec(html || '');
+  if (!m) return [];
+  let data;
+  try {
+    data = JSON.parse(m[1]);
+  } catch {
+    return [];
+  }
+  const out = [];
+  const seen = new Set();
+  const walk = (o, depth) => {
+    if (!o || typeof o !== 'object' || depth > 40) return;
+    if (Array.isArray(o)) {
+      for (const v of o) walk(v, depth + 1);
+      return;
+    }
+    const price = priceOfRecord(o);
+    if (typeof o.name === 'string' && typeof price === 'number' && (o.sku || o.foreignSku)) {
+      const key = `${o.sku}|${o.foreignSku}|${o.name}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        out.push({
+          name: cleanText(o.name),
+          price,
+          currency: o.price_range?.minimum_price?.final_price?.currency || '',
+          brand: cleanText(typeof o.brand === 'string' ? o.brand : o.brand?.name || '', 100),
+          ids: [o.foreignSku, o.sku, o.ean, o.barcode, o.gtin].filter((v) => typeof v === 'string' && v.trim()),
+          slug: typeof o.slug === 'string' ? o.slug : '',
+          urlKey: typeof o.url_key === 'string' ? o.url_key : '',
+          urlSuffix: typeof o.url_suffix === 'string' ? o.url_suffix : '',
+          image:
+            (Array.isArray(o.images) && typeof o.images[0]?.url === 'string' && o.images[0].url) ||
+            (typeof o.image?.url === 'string' && !/placeholder/.test(o.image.url) ? o.image.url : ''),
+          galleryMeta: typeof o.rz_gallery_meta === 'string' ? o.rz_gallery_meta : '',
+        });
+      }
+    }
+    for (const v of Object.values(o)) walk(v, depth + 1);
+  };
+  walk(data, 0);
+  return out;
+}
+
 
 /** Parses every JSON-LD block and returns the main product's fields, or null. */
 export function extractJsonLdProduct($) {
@@ -357,6 +418,13 @@ export function parseProductHtml(html, pageUrl) {
       currency = normalizeCurrency(itempropValue($, 'priceCurrency'));
     }
   }
+  // Next.js page data: the record whose name matches the page (else the first one).
+  const nd = nextDataProducts(html);
+  const ndMain = nd.find((p) => name && p.name.toLowerCase() === name.toLowerCase()) || (amount === null ? nd[0] : null);
+  if (amount === null && ndMain && ndMain.price > 0) {
+    amount = ndMain.price;
+    currency = ndMain.currency || '';
+  }
   const isShopify = looksLikeShopify(html || '');
   if (amount !== null && !currency) {
     currency =
@@ -379,6 +447,9 @@ export function parseProductHtml(html, pageUrl) {
     currency,
     siteName,
     brand: ld?.brand || '',
+    // A real brand name (some shops put a numeric id in JSON-LD brand).
+    brandName: [ld?.brand, ndMain?.brand].find((b) => b && !/^\d+$/.test(b)) || '',
+    identifiers: [...(ld?.ids || []), ...(ndMain?.ids || [])],
     seller: ld?.seller || '',
     isShopify,
     shopifyCurrency: isShopify ? shopifyCurrency(html) : '',

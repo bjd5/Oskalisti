@@ -34,12 +34,17 @@ GitHub Pages getur ekki vistað neitt sjálft, svo **óskalistinn er geymdur í 
   lagað gjafirnar beint í honum (t.d. skrifað „já“ í dálkinn *Keypt*).
 - **Vöruleit:** límið inn hlekk á vöruna og síðan les verð, nafn, verslun og mynd af vörusíðunni.
   Leit eftir nafni (án hlekks) er „best-effort“.
-- **Verðsamanburður:** þegar þið veljið vöru leitar síðan sjálfkrafa að sömu vöru í öðrum íslenskum
-  vefverslunum (.is) og sýnir verðin, ódýrast efst. Þið bætið þeim verslunum við sem þið viljið
+- **Verðsamanburður:** þegar þið veljið vöru leitar síðan sjálfkrafa að **sömu vöru** í öðrum
+  íslenskum verslunum og sýnir verðin, ódýrast efst. Þið bætið þeim verslunum við sem þið viljið
   (eða öllum). Hnappurinn **„Bera saman verð í öðrum verslunum“** gerir það sama hvenær sem er.
-  Gestir sjá svo allar verslanirnar með ódýrustu merkta. Leitin notar DuckDuckGo og Bing (engir
-  lyklar) og ber aðeins saman vörur með sömu stærð/tölum og flest sömu orð í heitinu –
-  athugið samt að varan sé sú sama áður en henni er bætt við.
+  - Leitað er beint í verslununum: **Líf og List, Kúnígúnd, Byggt og búið og Kokka** (engir lyklar).
+  - Varan telst sú sama ef **vörunúmer framleiðanda** er það sama (t.d. Global **G-5** – sem heitir
+    „Global Nakiri hnífur 18cm“ hjá Kúnígúnd en „Grænmetishnífur 18cm - G-5“ hjá Líf og List – eða
+    vörunúmer Le Creuset). Ef vörunúmer vantar er borið saman eftir merki, stærð og nafni og það
+    merkt „Líklega sama vara“.
+  - Hjá Kúnígúnd og Byggt og búið sést aðeins hluti vörumerkjasíðunnar án JavaScript, svo stundum
+    finnst vara þar ekki þó hún sé til.
+  - Fleiri verslunum má bæta við í `server/lookup/compare.js` (`SHOPS`).
 
 ### Uppsetning (einu sinni, um 5 mínútur)
 

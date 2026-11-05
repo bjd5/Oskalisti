@@ -1516,7 +1516,9 @@ async function runCompare({ auto }) {
 
 function renderCompare(data, auto) {
   const box = $('#compare-results');
-  const offers = (Array.isArray(data.offers) ? data.offers.map(normResult) : []).filter((o) => safeUrl(o.url));
+  const offers = (Array.isArray(data.offers) ? data.offers : [])
+    .map((o) => ({ ...normResult(o), match: o?.match === 'code' ? 'code' : 'name', matchCode: str(o?.matchCode) }))
+    .filter((o) => safeUrl(o.url));
   if (!offers.length) {
     const msg = data.message || 'Fann engar aðrar íslenskar verslanir með þessa vöru.';
     box.replaceChildren(h('p', { class: 'lookup-msg' }, auto ? `Verðsamanburður: ${msg}` : msg));
@@ -1554,6 +1556,9 @@ function renderCompare(data, auto) {
           ),
           o.price === cheapest ? h('span', { class: 'cheapest-badge' }, 'Ódýrast') : null,
           h('span', { class: 'compare-name' }, o.name || ''),
+          o.match === 'code'
+            ? h('span', { class: 'match-tag is-code' }, `✓ Sama vörunúmer${o.matchCode ? ` (${o.matchCode})` : ''}`)
+            : h('span', { class: 'match-tag' }, 'Líklega sama vara – athugið nafnið'),
         ),
         h('span', { class: 'compare-price' }, o.price != null ? kr(o.price) : 'Verð óþekkt'),
         addBtn,
@@ -1578,7 +1583,11 @@ function renderCompare(data, auto) {
       addAll,
     ),
     h('ul', { class: 'compare-list' }, rows.map((r) => r.el)),
-    h('p', { class: 'muted small' }, 'Verð eru sótt af vörusíðunum núna og geta breyst. Athugið að varan sé sú sama áður en þið bætið henni við.'),
+    h(
+      'p',
+      { class: 'muted small' },
+      `Leitað í: ${data.shopsSearched || 'Líf og List, Kúnígúnd, Byggt og búið, Kokka'}. Verð eru sótt núna og geta breyst.`,
+    ),
   );
 }
 

@@ -3,4 +3,4 @@
 // a page fetcher that goes through its Apps Script (browsers can't read other sites directly).
 export { extractProductWith } from '../server/lookup/parse.js';
 export { searchWith, NOTHING_FOUND_MESSAGE } from '../server/lookup/ddg.js';
-export { compareWith } from '../server/lookup/compare.js';
+export { compareWith, searchShops } from '../server/lookup/compare.js';

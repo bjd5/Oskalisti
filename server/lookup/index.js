@@ -14,7 +14,7 @@ import { aiLookup, createAnthropicClient } from './ai.js';
 import { extractProduct, nameFromUrlSlug } from './extract.js';
 import { LookupFetchError } from './net.js';
 import { searchKeyless } from './search.js';
-import { compareWith } from './compare.js';
+import { compareWith, searchShops } from './compare.js';
 import { safeFetch } from './net.js';
 import { storeNameFromUrl } from './stores.js';
 
@@ -191,7 +191,15 @@ export async function lookupProduct(
     aiMessage = ai.message;
   }
 
-  const found = await searchKeyless(q, { ...net, logger });
+  // The shops' own search first (search engines often block automated requests).
+  const shopFetch = (u, opts = {}) => safeFetch(u, { ...opts, fetchImpl: net.fetchImpl, dnsLookup: net.dnsLookup, signal });
+  let shopResults = [];
+  try {
+    shopResults = await searchShops(shopFetch, q, { signal, logger });
+  } catch (err) {
+    if (signal?.aborted) throw err;
+  }
+  const found = shopResults.length ? { results: shopResults, source: 'search' } : await searchKeyless(q, { ...net, logger });
   const response = { ...found, results: dedupeResults(found.results) };
   if (!aiMessage) return response;
   // Tell the admin why AI search didn't help (e.g. invalid API key).
