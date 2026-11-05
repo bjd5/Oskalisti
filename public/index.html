@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="is">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Óskalistinn okkar</title>
+  <meta name="description" content="Óskalistinn okkar – hugmyndir að gjöfum fyrir jól, afmæli, innflutning og önnur tilefni.">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#faf6f0" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1b1916" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <!-- Optional web font. Loaded without blocking rendering; the system serif stack is used if it fails. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&amp;display=swap" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#gjafir">Fara beint í gjafalistann</a>
+
+  <!-- Admin bar (shown after login) -->
+  <div id="admin-bar" class="admin-bar" hidden>
+    <div class="container admin-bar-inner">
+      <div class="admin-bar-info">
+        <span class="admin-bar-label"><span aria-hidden="true">🔑</span> Stjórnborð</span>
+        <span id="admin-summary" class="admin-summary"></span>
+      </div>
+      <div class="admin-bar-actions">
+        <button type="button" class="btn btn-light btn-sm" id="btn-add-item">+ Bæta við gjöf</button>
+        <button type="button" class="btn btn-ghost-light btn-sm" id="btn-categories">Flokkar</button>
+        <button type="button" class="btn btn-ghost-light btn-sm" id="btn-settings">Stillingar</button>
+        <button type="button" class="btn btn-ghost-light btn-sm" id="btn-logout">Skrá út</button>
+      </div>
+    </div>
+  </div>
+
+  <header class="hero">
+    <div class="container hero-inner">
+      <h1 id="site-title" class="hero-title">Óskalistinn okkar</h1>
+      <div class="ornament" aria-hidden="true"><span></span><i>♥</i><span></span></div>
+      <p id="site-subtitle" class="hero-subtitle">Hugmyndir að gjöfum – jól, afmæli, innflutningur og önnur tilefni</p>
+      <p id="site-intro" class="hero-intro" hidden></p>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="container">
+      <section class="budget panel" aria-labelledby="budget-heading">
+        <div class="section-head">
+          <h2 id="budget-heading">Hvað viltu gefa mikið?</h2>
+          <p class="muted small">Veldu verðbil og við stingum upp á gjöfum sem passa.</p>
+        </div>
+        <div id="budget-chips" class="chips" role="group" aria-labelledby="budget-heading"></div>
+      </section>
+
+      <section id="ideas" class="ideas" aria-labelledby="ideas-heading" hidden>
+        <div class="ideas-head">
+          <div>
+            <h2 id="ideas-heading"><span aria-hidden="true">✨</span> Hugmyndir fyrir þig</h2>
+            <p id="ideas-sub" class="muted small"></p>
+          </div>
+          <button type="button" id="ideas-shuffle" class="btn btn-soft btn-sm"><span aria-hidden="true">🔀</span> Sýna aðrar hugmyndir</button>
+        </div>
+        <div id="ideas-live" aria-live="polite">
+          <div id="ideas-empty" class="ideas-empty" hidden></div>
+          <div id="ideas-list" class="ideas-list"></div>
+          <div id="pairs" class="pairs" hidden>
+            <h3 id="pairs-heading" class="pairs-heading">Eða tvær minni gjafir saman</h3>
+            <div id="pairs-list" class="pairs-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="gjafir" class="list-section" aria-labelledby="list-heading" tabindex="-1">
+        <div class="list-head">
+          <h2 id="list-heading">Allar gjafir</h2>
+          <p id="result-count" class="muted small" aria-live="polite"></p>
+        </div>
+
+        <div id="category-chips" class="chips chips-cats" role="group" aria-label="Flokkar"></div>
+
+        <div class="toolbar">
+          <label class="select-wrap">
+            <span class="select-label">Röðun</span>
+            <span class="select-box">
+              <select id="sort">
+                <option value="recommended">Mælt með</option>
+                <option value="price-asc">Verð: lægst fyrst</option>
+                <option value="price-desc">Verð: hæst fyrst</option>
+                <option value="newest">Nýjast</option>
+                <option value="name">Nafn (A–Ö)</option>
+              </select>
+            </span>
+          </label>
+          <label class="check">
+            <input type="checkbox" id="show-purchased" checked>
+            <span>Sýna gjafir sem búið er að gefa</span>
+          </label>
+        </div>
+
+        <ul id="grid" class="grid" aria-busy="true"></ul>
+        <div id="empty" class="empty" hidden></div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <p class="muted small" id="footer-text">Takk fyrir að hugsa til okkar ♥</p>
+      <button type="button" class="footer-link" id="btn-access"><span aria-hidden="true">🔑</span> Aðgangur</button>
+    </div>
+  </footer>
+
+  <!-- Login -->
+  <dialog id="dlg-login" class="modal modal-sm" aria-labelledby="login-title">
+    <form id="login-form" class="modal-inner">
+      <header class="modal-head">
+        <h2 id="login-title">Aðgangur</h2>
+        <button type="button" class="icon-btn" data-close aria-label="Loka">✕</button>
+      </header>
+      <div class="modal-body">
+        <p class="muted small">Sláðu inn aðgangskóðann til að bæta við gjöfum og merkja við það sem búið er að kaupa.</p>
+        <div class="field">
+          <label for="login-code">Aðgangskóði</label>
+          <input id="login-code" name="code" type="password" autocomplete="current-password" required>
+        </div>
+        <p id="login-error" class="form-error" role="alert" hidden></p>
+      </div>
+      <footer class="modal-foot">
+        <button type="button" class="btn btn-quiet" data-close>Hætta við</button>
+        <button type="submit" class="btn btn-primary" id="login-submit">Skrá inn</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <!-- Add / edit item -->
+  <dialog id="dlg-item" class="modal modal-lg" aria-labelledby="item-title">
+    <div class="modal-inner">
+      <header class="modal-head">
+        <h2 id="item-title">Ný gjöf</h2>
+        <button type="button" class="icon-btn" data-close aria-label="Loka">✕</button>
+      </header>
+      <div class="modal-body" id="item-body">
+        <form id="lookup-form" class="lookup" role="search">
+          <label for="lookup-query" class="lookup-label">Hvað langar ykkur í? Skrifaðu heiti vöru eða límdu inn hlekk</label>
+          <div class="lookup-row">
+            <input id="lookup-query" type="text" placeholder="t.d. Le Creuset pottur 24 cm" autocomplete="off" enterkeyhint="search">
+            <button type="submit" class="btn btn-primary" id="lookup-submit"><span aria-hidden="true">🔎</span> Finna</button>
+          </div>
+          <p id="lookup-hint" class="muted small lookup-hint"></p>
+        </form>
+        <div id="lookup-status" class="lookup-status" aria-live="polite"></div>
+        <div id="lookup-results" class="lookup-results"></div>
+
+        <form id="item-form" class="item-form" novalidate>
+          <h3 class="form-section-title">Upplýsingar um gjöfina</h3>
+          <div class="field">
+            <label for="f-name">Nafn <span class="req" aria-hidden="true">*</span></label>
+            <input id="f-name" name="name" type="text" maxlength="200" required autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="f-desc">Lýsing</label>
+            <textarea id="f-desc" name="description" rows="2" maxlength="1000" placeholder="t.d. helst í dökkbláu"></textarea>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="f-category">Flokkur</label>
+              <span class="select-box select-block"><select id="f-category" name="categoryId"></select></span>
+            </div>
+            <div class="field">
+              <label for="f-price">Verð (kr.)</label>
+              <input id="f-price" name="price" type="text" inputmode="numeric" autocomplete="off" placeholder="Reiknast út frá verslunum">
+            </div>
+          </div>
+          <div class="field">
+            <label for="f-image">Mynd (hlekkur)</label>
+            <div class="image-field">
+              <div id="f-image-preview" class="image-preview" aria-hidden="true"></div>
+              <input id="f-image" name="imageUrl" type="url" inputmode="url" placeholder="https://…" autocomplete="off">
+            </div>
+          </div>
+
+          <fieldset class="offers-editor">
+            <legend>Verslanir</legend>
+            <div id="offers-rows" class="offers-rows"></div>
+            <button type="button" class="btn btn-soft btn-sm" id="add-offer">+ Bæta við verslun</button>
+          </fieldset>
+
+          <div class="checks">
+            <label class="check"><input type="checkbox" id="f-favorite" name="favorite"> <span><span class="heart" aria-hidden="true">♥</span> Efst á óskalistanum</span></label>
+            <label class="check" id="f-purchased-wrap" hidden><input type="checkbox" id="f-purchased" name="purchased"> <span>Keypt</span></label>
+          </div>
+          <p id="item-error" class="form-error" role="alert" hidden></p>
+        </form>
+      </div>
+      <footer class="modal-foot">
+        <button type="button" class="btn btn-quiet" data-close>Hætta við</button>
+        <button type="submit" form="item-form" class="btn btn-primary" id="item-submit">Vista</button>
+      </footer>
+    </div>
+  </dialog>
+
+  <!-- Categories -->
+  <dialog id="dlg-categories" class="modal" aria-labelledby="cats-title">
+    <div class="modal-inner">
+      <header class="modal-head">
+        <h2 id="cats-title">Flokkar</h2>
+        <button type="button" class="icon-btn" data-close aria-label="Loka">✕</button>
+      </header>
+      <div class="modal-body">
+        <p class="muted small">Breyttu heiti eða tákni og smelltu á „Vista“. Ef flokki er eytt færast gjafirnar í honum í „Annað“.</p>
+        <ul id="cats-list" class="cats-list"></ul>
+        <form id="cat-new-form" class="cat-new">
+          <h3 class="form-section-title">Nýr flokkur</h3>
+          <div class="cat-row">
+            <input id="cat-new-icon" class="cat-icon-input" type="text" maxlength="8" placeholder="🎁" aria-label="Tákn (emoji)">
+            <input id="cat-new-name" class="cat-name-input" type="text" maxlength="60" placeholder="Heiti flokks" aria-label="Heiti nýs flokks" required>
+            <button type="submit" class="btn btn-primary btn-sm">Bæta við</button>
+          </div>
+        </form>
+      </div>
+      <footer class="modal-foot">
+        <button type="button" class="btn btn-quiet" data-close>Loka</button>
+      </footer>
+    </div>
+  </dialog>
+
+  <!-- Settings -->
+  <dialog id="dlg-settings" class="modal" aria-labelledby="settings-title">
+    <form id="settings-form" class="modal-inner">
+      <header class="modal-head">
+        <h2 id="settings-title">Stillingar</h2>
+        <button type="button" class="icon-btn" data-close aria-label="Loka">✕</button>
+      </header>
+      <div class="modal-body">
+        <div class="field">
+          <label for="s-title">Titill</label>
+          <input id="s-title" name="title" type="text" maxlength="100" required>
+        </div>
+        <div class="field">
+          <label for="s-subtitle">Undirtitill</label>
+          <input id="s-subtitle" name="subtitle" type="text" maxlength="200">
+        </div>
+        <div class="field">
+          <label for="s-intro">Kynning <span class="muted">(valfrjálst)</span></label>
+          <textarea id="s-intro" name="intro" rows="4" maxlength="2000" placeholder="Nokkur orð til þeirra sem skoða listann, t.d. um stærðir, liti eða hvar best er að koma gjöfum til skila."></textarea>
+        </div>
+      </div>
+      <footer class="modal-foot">
+        <button type="button" class="btn btn-quiet" data-close>Hætta við</button>
+        <button type="submit" class="btn btn-primary" id="settings-submit">Vista</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" popover="manual" hidden></div>
+  <noscript><p class="noscript">Það þarf að kveikja á JavaScript til að skoða óskalistann.</p></noscript>
+</body>
+</html>
