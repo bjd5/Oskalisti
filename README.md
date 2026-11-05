@@ -46,6 +46,7 @@ Stillingar fara í skrá sem heitir `.env` (afritið `.env.example`):
 | `DATA_DIR` | Mappa þar sem listinn er vistaður (sjálfgefið `./data`). |
 | `SESSION_SECRET` | *Valfrjálst.* Leynilykill fyrir innskráningarköku. Sjálfgefið leitt af `ADMIN_CODE`, svo ef kóðanum er breytt skráist allir út. |
 | `ANTHROPIC_MODEL` | *Valfrjálst.* Hvaða Claude líkan er notað við leit (sjálfgefið `claude-opus-5-5`). |
+| `TRUST_PROXY` | *Valfrjálst.* Fjöldi proxy-þjóna fyrir framan síðuna (sjálfgefið 1, sem passar fyrir Railway/Fly/Render). |
 
 ## Hvernig vöruleitin virkar
 

@@ -48,6 +48,14 @@ function errorHandler(error, req, res, next) {
  * @param {() => boolean} [deps.aiSearchEnabled]  reported by GET /api/admin/me
  * @param {string} [deps.publicDir]               static files directory
  */
+function trustProxySetting(value) {
+  if (value === undefined || value === '') return 1;
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  const hops = Number(value);
+  return Number.isInteger(hops) && hops >= 0 ? hops : value;
+}
+
 export function createApp({
   store,
   auth,
@@ -60,7 +68,9 @@ export function createApp({
   }
 
   const app = express();
-  app.set('trust proxy', true);
+  // Number of reverse-proxy hops in front of the app (1 on Railway/Fly/Render).
+  // Trusting a fixed hop count stops clients from spoofing X-Forwarded-For.
+  app.set('trust proxy', trustProxySetting(process.env.TRUST_PROXY));
   app.disable('x-powered-by');
   app.use(securityHeaders);
 
