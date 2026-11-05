@@ -362,6 +362,10 @@ async function initBackend() {
 }
 
 async function api(path, opts = {}) {
+  // GitHub Pages has no /api: without a backend there, the page and config.json are out of step.
+  if (!backend && location.hostname.endsWith('github.io')) {
+    throw new ApiError('Síðan var að uppfærast. Endurhlaðaðu hana til að fá nýjustu útgáfuna.', 0);
+  }
   if (!backend) return serverApi(path, opts);
   try {
     return await backend.request(path, opts);
