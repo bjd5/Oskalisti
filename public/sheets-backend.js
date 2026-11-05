@@ -129,7 +129,7 @@ export function createSheetsBackend(config, { fetchImpl = (...args) => globalThi
   async function lookup(query, signal) {
     requireLogin();
     if (!query) throw new BackendError('Skrifaðu hvað þig langar í eða límdu inn hlekk.', 400);
-    const { extractProductWith, searchWith, NOTHING_FOUND_MESSAGE } = await importLookup();
+    const { extractProductWith, searchWith, searchShops, NOTHING_FOUND_MESSAGE } = await importLookup();
 
     // Page fetcher for the shared parser: goes through the Apps Script.
     const fetchPage = async (url) => {
@@ -156,6 +156,9 @@ export function createSheetsBackend(config, { fetchImpl = (...args) => globalThi
       }
     }
     try {
+      // The shops' own search first (search engines often block automated requests).
+      const results = await searchShops(fetchPage, query, { signal, logger: null });
+      if (results.length) return { results, source: 'search' };
       return await searchWith(fetchPage, query, { signal, logger: null });
     } catch (err) {
       if (signal?.aborted) throw err;

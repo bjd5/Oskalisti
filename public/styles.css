@@ -725,3 +725,5 @@ a.offer:hover { border-color: var(--accent); }
   align-self: flex-start; font-size: 0.72rem; font-weight: 700; letter-spacing: .02em;
   padding: 1px 8px; border-radius: 999px; background: var(--accent); color: var(--accent-ink);
 }
+.match-tag { font-size: 0.75rem; color: var(--muted); }
+.match-tag.is-code { color: var(--accent); font-weight: 600; }
