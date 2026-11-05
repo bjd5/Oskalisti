@@ -8,8 +8,31 @@
    Constants & helpers
    ====================================================================== */
 
-const fmtNumber = new Intl.NumberFormat('is-IS');
-const fmtDecimal = new Intl.NumberFormat('is-IS', { maximumFractionDigits: 2 });
+// Intl.NumberFormat('is-IS') gives "12.990". Some browsers ship without Icelandic locale data and
+// fall back to "12,990", so verify the output and group manually if needed.
+const isNumberFormat = (() => {
+  try {
+    const f = new Intl.NumberFormat('is-IS', { maximumFractionDigits: 0 });
+    if (f.format(12990) === '12.990') return f;
+  } catch {
+    /* fall through */
+  }
+  return null;
+})();
+const fmtNumber = {
+  format(n) {
+    if (isNumberFormat) return isNumberFormat.format(n);
+    const sign = n < 0 ? '-' : '';
+    return sign + String(Math.round(Math.abs(n))).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  },
+};
+const fmtDecimal = {
+  format(n) {
+    const [int, dec] = (Math.round(n * 100) / 100).toFixed(2).split('.');
+    const d = dec.replace(/0+$/, '');
+    return fmtNumber.format(Number(int)) + (d ? `,${d}` : '');
+  },
+};
 const kr = (n) => `${fmtNumber.format(n)} kr.`;
 
 const DEFAULT_SETTINGS = {
@@ -500,6 +523,7 @@ function createChip() {
     { type: 'button', class: 'chip' },
     h('span', { class: 'chip-icon', 'aria-hidden': 'true' }),
     h('span', { class: 'chip-label' }),
+    h('span', { class: 'chip-unit' }),
     h('span', { class: 'chip-count', 'aria-hidden': 'true' }),
     h('span', { class: 'sr-only' }),
   );
@@ -514,11 +538,13 @@ function syncChips(container, specs) {
     el._onClick = s.onClick;
     el.setAttribute('aria-pressed', String(!!s.pressed));
     el.classList.toggle('is-empty', !!s.empty);
-    const [icon, label, count, sr] = el.children;
+    const [icon, label, unit, count, sr] = el.children;
     icon.textContent = s.icon || '';
     icon.hidden = !s.icon;
     el.classList.toggle('chip-noicon', !s.icon);
     label.textContent = s.label;
+    unit.textContent = s.unit || '';
+    unit.hidden = !s.unit;
     count.textContent = String(s.count);
     sr.textContent = `, ${s.count} ${giftsWord(s.count)} í boði`;
     return el;
@@ -532,9 +558,12 @@ function renderBudgetChips() {
     $('#budget-chips'),
     RANGES.map((r) => {
       const n = countAvailable(r, state.category);
+      // " kr." is split off so it can be visually dropped on narrow screens (still read aloud)
+      const split = r.max !== Infinity && r.label.endsWith(' kr.');
       return {
         key: r.id,
-        label: r.label,
+        label: split ? r.label.slice(0, -4) : r.label,
+        unit: split ? ' kr.' : '',
         count: n,
         pressed: state.budget === r.id,
         empty: n === 0 && r.id !== 'all',
@@ -1080,7 +1109,7 @@ for (const dlg of [dlgLogin, dlgItem, dlgCats, dlgSettings]) {
 
 function showModal(dlg, focusEl) {
   if (!dlg.open) dlg.showModal();
-  if (focusEl) requestAnimationFrame(() => focusEl.focus());
+  focusEl?.focus();
 }
 
 /* ---------- login ---------- */

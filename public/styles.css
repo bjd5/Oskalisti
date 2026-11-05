@@ -258,8 +258,12 @@ a { color: var(--accent); }
 @media (prefers-color-scheme: dark) { .chip[aria-pressed="true"] .chip-count { background: rgb(0 0 0 / 0.16); } }
 .chip.is-empty .chip-count { background: var(--surface-2); color: var(--muted); }
 .chip-icon { font-size: 1.05em; line-height: 1; }
+.chip-label + .chip-unit { margin-left: -8px; white-space: pre; }
 .chip-noicon { padding-left: 14px; }
 @media (max-width: 559px) {
+  .budget .chips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .budget .chip { justify-content: space-between; white-space: nowrap; }
+  .chip-unit { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .chips { gap: 6px; }
   .chip { min-height: 38px; font-size: 0.86rem; padding: 5px 8px 5px 12px; gap: 6px; }
 }
@@ -398,6 +402,9 @@ a { color: var(--accent); }
     radial-gradient(circle at 30% 25%, rgb(255 255 255 / 0.55), transparent 60%),
     linear-gradient(135deg, var(--accent-soft), var(--terra-soft));
 }
+@media (prefers-color-scheme: dark) {
+  .ph { background: linear-gradient(135deg, #2c4a3f, #5a3527); }
+}
 .ph-icon { font-size: 3rem; line-height: 1; filter: saturate(.9); }
 .idea .ph-icon { font-size: 2.2rem; }
 
@@ -409,8 +416,8 @@ a { color: var(--accent); }
   font-size: 0.78rem; font-weight: 700; box-shadow: var(--shadow-sm);
 }
 .ribbon {
-  position: absolute; top: 22px; right: -46px; z-index: 2;
-  width: 190px; padding: 6px 0;
+  position: absolute; top: 46px; right: -42px; z-index: 2;
+  width: 200px; padding: 5px 0;
   transform: rotate(45deg);
   background: var(--done); color: #fff;
   text-align: center; font-size: 0.8rem; font-weight: 700; letter-spacing: .02em;
@@ -493,6 +500,7 @@ a.offer:hover { border-color: var(--accent); }
   background: var(--surface); color: var(--text);
   box-shadow: var(--shadow-lg);
   overflow: hidden;
+  overflow: clip; /* not programmatically scrollable, so focus()/scrollIntoView can't shift the frame */
 }
 .modal[open] { display: flex; flex-direction: column; animation: pop .18s ease-out; }
 .modal::backdrop { background: rgb(30 22 14 / 0.5); backdrop-filter: blur(2px); }
@@ -516,7 +524,7 @@ a.offer:hover { border-color: var(--accent); }
   .modal, .modal-sm, .modal-lg {
     width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; border-radius: 0; margin: 0;
   }
-  .modal-sm { height: auto; max-height: 100dvh; margin: auto auto 0; border-radius: 20px 20px 0 0; }
+  .modal-sm { height: fit-content; max-height: 100dvh; margin: auto auto 0; border-radius: 20px 20px 0 0; }
   .modal-body { padding: 16px; }
   .modal-head { padding-left: 16px; }
   .modal-foot .btn { flex: 1; }
@@ -599,6 +607,14 @@ a.offer:hover { border-color: var(--accent); }
 .result-actions { display: flex; flex-direction: column; gap: 6px; margin-top: auto; padding-top: 8px; }
 .result-actions .btn { width: 100%; }
 .result-state { font-size: 0.82rem; font-weight: 700; color: var(--accent); }
+.result-state:empty { display: none; }
+@media (max-width: 559px) {
+  .result { display: grid; grid-template-columns: 96px minmax(0, 1fr); }
+  .result .media { aspect-ratio: auto; height: 100%; min-height: 96px; }
+  .result-body { padding: 10px 12px; }
+  .result-actions { flex-direction: row; flex-wrap: wrap; }
+  .result-actions .btn { width: auto; flex: 1 1 auto; }
+}
 
 .item-form { padding-top: 6px; border-top: 1px solid var(--border); margin-top: 22px !important; padding-top: 20px; }
 .image-field { display: flex; gap: 12px; align-items: center; }
@@ -639,7 +655,7 @@ a.offer:hover { border-color: var(--accent); }
 .cat-icon-input { width: 56px !important; flex: none; text-align: center; font-size: 1.2rem !important; padding-inline: 4px !important; }
 .cat-name-input { flex: 1 1 160px; min-width: 0; width: auto !important; }
 .cat-row input { min-height: 40px; padding: 8px 10px; background: var(--surface); }
-.cat-actions { display: flex; gap: 4px; flex: none; margin-left: auto; }
+.cat-actions { display: flex; gap: 4px; flex: none; margin-left: auto; min-width: 140px; }
 .cat-count { font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
 .cat-new { padding-top: 18px; border-top: 1px solid var(--border); margin-top: 18px !important; }
 
