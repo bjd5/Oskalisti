@@ -5,6 +5,7 @@
 // are http(s) (see safeUrl()).
 
 import './compat.js'; // fallbacks for older Safari (<dialog>, structuredClone, randomUUID)
+import { suggestCategory } from './shared/categorize.js';
 
 /* ======================================================================
    Constants & helpers
@@ -1311,6 +1312,9 @@ function openItemDialog(id) {
 
   const defaultCat = state.category !== 'all' ? state.category : state.categories[0]?.id || 'annad';
   fillCategorySelect(item ? categoryOf(item).id : defaultCat);
+  // New gifts get their category from the name until the admin picks one; edits are left alone.
+  fCategory.dataset.manual = item ? '1' : '';
+  $('#f-category-hint').hidden = true;
   offersRows.replaceChildren();
   fPrice.dataset.auto = '';
 
@@ -1725,6 +1729,7 @@ function resultCard(r) {
     }
     addOfferFromResult(r);
     onOffersChanged();
+    autoCategory();
     itemForm.dirty = true;
     clearItemError();
     for (const other of card.parentElement?.querySelectorAll('.result.is-used') || []) {
@@ -1951,7 +1956,79 @@ function catRow(c) {
 
 function renderCatsDialog() {
   $('#cats-list').replaceChildren(...state.categories.map(catRow));
+  $('#auto-sort-box').replaceChildren();
 }
+
+/* ---------- automatic categories ---------- */
+
+function autoCategory() {
+  if (fCategory.dataset.manual === '1') return;
+  const id = suggestCategory(`${fName.value} ${fDesc.value}`, state.categories);
+  if (!id || id === fCategory.value) return;
+  fCategory.value = id;
+  $('#f-category-hint').hidden = false;
+  updateImagePreview();
+}
+
+let autoCategoryTimer = 0;
+fName.addEventListener('input', () => {
+  clearTimeout(autoCategoryTimer);
+  autoCategoryTimer = setTimeout(autoCategory, 300);
+});
+fCategory.addEventListener('change', () => {
+  fCategory.dataset.manual = '1';
+  $('#f-category-hint').hidden = true;
+});
+
+// "Flokka gjafir sjálfkrafa": propose moving gifts whose name clearly fits another category.
+$('#auto-sort-btn').addEventListener('click', () => {
+  const box = $('#auto-sort-box');
+  const moves = state.items
+    .map((item) => ({ item, to: suggestCategory(`${item.name} ${item.description || ''}`, state.categories) }))
+    .filter((m) => m.to && m.to !== m.item.categoryId);
+  if (!moves.length) {
+    box.replaceChildren(h('p', { class: 'muted small' }, 'Allar gjafir virðast vera í réttum flokki.'));
+    return;
+  }
+  const catName = (id) => state.categories.find((c) => c.id === id)?.name || id;
+  const rows = moves.map((m) => {
+    const cb = h('input', { type: 'checkbox', checked: true });
+    return {
+      m,
+      cb,
+      el: h('li', null, h('label', { class: 'check' }, cb, h('span', null, `${m.item.name}: ${catName(m.item.categoryId)} → `, h('strong', null, catName(m.to))))),
+    };
+  });
+  const apply = h('button', { type: 'button', class: 'btn btn-primary btn-sm' }, 'Færa valdar gjafir');
+  apply.addEventListener('click', async () => {
+    apply.disabled = true;
+    let moved = 0;
+    try {
+      for (const r of rows.filter((x) => x.cb.checked)) {
+        apply.textContent = `Færi… (${moved + 1})`;
+        const updated = await adminApi(`/api/items/${encodeURIComponent(r.m.item.id)}`, {
+          method: 'PUT',
+          body: { categoryId: r.m.to },
+        });
+        upsertItem(updated);
+        moved++;
+      }
+      renderAll();
+      renderCatsDialog();
+      toast(moved ? `${moved} ${moved === 1 ? 'gjöf færð' : 'gjafir færðar'} í nýjan flokk.` : 'Engin gjöf valin.');
+    } catch (err) {
+      reportError(err);
+      renderAll();
+      apply.disabled = false;
+      apply.textContent = 'Færa valdar gjafir';
+    }
+  });
+  box.replaceChildren(
+    h('p', { class: 'muted small' }, 'Þessar gjafir virðast eiga heima í öðrum flokki. Taktu hakið af þeim sem eiga að vera kyrrar:'),
+    h('ul', { class: 'auto-sort-list' }, rows.map((r) => r.el)),
+    apply,
+  );
+});
 
 $('#btn-categories').addEventListener('click', () => {
   renderCatsDialog();

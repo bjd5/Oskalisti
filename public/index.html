@@ -167,6 +167,7 @@
             <div class="field">
               <label for="f-category">Flokkur</label>
               <span class="select-box select-block"><select id="f-category" name="categoryId"></select></span>
+              <p id="f-category-hint" class="muted small" hidden>Valinn sjálfkrafa út frá heitinu – breyttu ef þarf.</p>
             </div>
             <div class="field">
               <label for="f-price">Verð (kr.)</label>
@@ -215,6 +216,10 @@
       <div class="modal-body">
         <p class="muted small">Breyttu heiti eða tákni og smelltu á „Vista“. Ef flokki er eytt færast gjafirnar í honum í „Annað“.</p>
         <ul id="cats-list" class="cats-list"></ul>
+        <section class="auto-sort">
+          <button type="button" class="btn btn-soft btn-sm" id="auto-sort-btn">✨ Flokka gjafir sjálfkrafa</button>
+          <div id="auto-sort-box"></div>
+        </section>
         <form id="cat-new-form" class="cat-new">
           <h3 class="form-section-title">Nýr flokkur</h3>
           <div class="cat-row">

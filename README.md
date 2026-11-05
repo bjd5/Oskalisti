@@ -34,6 +34,12 @@ GitHub Pages getur ekki vistað neitt sjálft, svo **óskalistinn er geymdur í 
   lagað gjafirnar beint í honum (t.d. skrifað „já“ í dálkinn *Keypt*).
 - **Vöruleit:** límið inn hlekk á vöruna og síðan les verð, nafn, verslun og mynd af vörusíðunni.
   Leit eftir nafni (án hlekks) er „best-effort“.
+- **Sjálfvirkir flokkar:** þegar heiti gjafar er slegið inn (eða vara valin) velur síðan flokkinn
+  sjálf út frá heitinu – t.d. mæliskeiðar, skálar, kökuform og hrærivélar í *Bakstur*, pottar og
+  hnífar í *Í eldhúsið*, glös og hnífapör í *Borðstofan*. Ef þið veljið flokk sjálf breytir síðan
+  honum ekki. Í **Flokkar** er hnappurinn **„Flokka gjafir sjálfkrafa“** sem leggur til flokk fyrir
+  gjafir sem eru þegar á listanum (þið hakið við hverjar á að færa). Leitarorðin eru í
+  [`public/shared/categorize.js`](public/shared/categorize.js); nýir flokkar nota líka eigið heiti.
 - **Verðsamanburður:** þegar þið veljið vöru leitar síðan sjálfkrafa að **sömu vöru** í öðrum
   íslenskum verslunum og sýnir verðin, ódýrast efst. Þið bætið þeim verslunum við sem þið viljið
   (eða öllum). Hnappurinn **„Bera saman verð í öðrum verslunum“** gerir það sama hvenær sem er.
