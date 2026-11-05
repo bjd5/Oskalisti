@@ -88,6 +88,11 @@ export function createApp({
   api.use((req, res) => res.status(404).json({ error: 'Fannst ekki.' }));
 
   app.use('/api', api);
+  // public/config.json tells the GitHub Pages build to use the in-browser GitHub backend;
+  // when this Node server is running, the frontend should talk to it instead.
+  app.get('/config.json', (req, res) => res.set('Cache-Control', 'no-store').json({ backend: 'server' }));
+  // The seed copy under public/data is only for GitHub Pages; the server's data is in DATA_DIR.
+  app.use('/data', (req, res) => res.status(404).end());
   app.use(express.static(publicDir));
   app.use(errorHandler);
 

@@ -10,12 +10,16 @@
   "scripts": {
     "start": "node --env-file-if-exists=.env server/index.js",
     "dev": "node --env-file-if-exists=.env --watch server/index.js",
-    "test": "node --test \"test/**/*.test.js\""
+    "test": "node --test \"test/**/*.test.js\"",
+    "build:vendor": "esbuild node_modules/@anthropic-ai/sdk/index.mjs --bundle --format=esm --platform=browser --minify --legal-comments=inline --outfile=public/vendor/anthropic-sdk.js"
   },
   "license": "MIT",
   "dependencies": {
     "@anthropic-ai/sdk": "^1.5.0",
     "cheerio": "^1.2.0",
     "express": "^5.3.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.12"
   }
 }

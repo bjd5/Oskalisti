@@ -1,0 +1,35 @@
+{
+  "settings": {
+    "title": "Óskalistinn okkar",
+    "subtitle": "Hugmyndir að gjöfum – jól, afmæli, innflutningur og önnur tilefni",
+    "intro": ""
+  },
+  "categories": [
+    {
+      "id": "eldhusid",
+      "name": "Í eldhúsið",
+      "icon": "🍳"
+    },
+    {
+      "id": "heimilid",
+      "name": "Fyrir heimilið",
+      "icon": "🏡"
+    },
+    {
+      "id": "hjonarumid",
+      "name": "Hjónarúmið",
+      "icon": "🛏️"
+    },
+    {
+      "id": "bordstofan",
+      "name": "Borðstofan",
+      "icon": "🍽️"
+    },
+    {
+      "id": "annad",
+      "name": "Annað",
+      "icon": "🎁"
+    }
+  ],
+  "items": []
+}

@@ -8,8 +8,31 @@
    Constants & helpers
    ====================================================================== */
 
-const fmtNumber = new Intl.NumberFormat('is-IS');
-const fmtDecimal = new Intl.NumberFormat('is-IS', { maximumFractionDigits: 2 });
+// Intl.NumberFormat('is-IS') gives "12.990". Some browsers ship without Icelandic locale data and
+// fall back to "12,990", so verify the output and group manually if needed.
+const isNumberFormat = (() => {
+  try {
+    const f = new Intl.NumberFormat('is-IS', { maximumFractionDigits: 0 });
+    if (f.format(12990) === '12.990') return f;
+  } catch {
+    /* fall through */
+  }
+  return null;
+})();
+const fmtNumber = {
+  format(n) {
+    if (isNumberFormat) return isNumberFormat.format(n);
+    const sign = n < 0 ? '-' : '';
+    return sign + String(Math.round(Math.abs(n))).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  },
+};
+const fmtDecimal = {
+  format(n) {
+    const [int, dec] = (Math.round(n * 100) / 100).toFixed(2).split('.');
+    const d = dec.replace(/0+$/, '');
+    return fmtNumber.format(Number(int)) + (d ? `,${d}` : '');
+  },
+};
 const kr = (n) => `${fmtNumber.format(n)} kr.`;
 
 const DEFAULT_SETTINGS = {
@@ -320,7 +343,36 @@ function defaultError(status) {
   return 'Eitthvað fór úrskeiðis. Reyndu aftur.';
 }
 
-async function api(path, { method = 'GET', body, signal } = {}) {
+// Which backend answers /api/* – the Node server (default) or, on GitHub Pages, the in-browser
+// GitHub backend (see github-backend.js). Decided from config.json at startup.
+let backend = null;
+
+async function initBackend() {
+  let config = null;
+  try {
+    const res = await fetch('config.json', { cache: 'no-store' });
+    if (res.ok) config = await res.json();
+  } catch {
+    /* no config → Node server */
+  }
+  if (config?.backend === 'github') {
+    const { createGitHubBackend } = await import('./github-backend.js');
+    backend = createGitHubBackend(config.github);
+    document.documentElement.dataset.backend = 'github';
+  }
+}
+
+async function api(path, opts = {}) {
+  if (!backend) return serverApi(path, opts);
+  try {
+    return await backend.request(path, opts);
+  } catch (err) {
+    if (opts.signal?.aborted || err?.name === 'AbortError') throw err;
+    throw new ApiError(err?.message || defaultError(err?.status ?? 0), err?.status ?? 0);
+  }
+}
+
+async function serverApi(path, { method = 'GET', body, signal } = {}) {
   let res;
   let text = '';
   try {
@@ -500,6 +552,7 @@ function createChip() {
     { type: 'button', class: 'chip' },
     h('span', { class: 'chip-icon', 'aria-hidden': 'true' }),
     h('span', { class: 'chip-label' }),
+    h('span', { class: 'chip-unit' }),
     h('span', { class: 'chip-count', 'aria-hidden': 'true' }),
     h('span', { class: 'sr-only' }),
   );
@@ -514,11 +567,13 @@ function syncChips(container, specs) {
     el._onClick = s.onClick;
     el.setAttribute('aria-pressed', String(!!s.pressed));
     el.classList.toggle('is-empty', !!s.empty);
-    const [icon, label, count, sr] = el.children;
+    const [icon, label, unit, count, sr] = el.children;
     icon.textContent = s.icon || '';
     icon.hidden = !s.icon;
     el.classList.toggle('chip-noicon', !s.icon);
     label.textContent = s.label;
+    unit.textContent = s.unit || '';
+    unit.hidden = !s.unit;
     count.textContent = String(s.count);
     sr.textContent = `, ${s.count} ${giftsWord(s.count)} í boði`;
     return el;
@@ -532,9 +587,12 @@ function renderBudgetChips() {
     $('#budget-chips'),
     RANGES.map((r) => {
       const n = countAvailable(r, state.category);
+      // " kr." is split off so it can be visually dropped on narrow screens (still read aloud)
+      const split = r.max !== Infinity && r.label.endsWith(' kr.');
       return {
         key: r.id,
-        label: r.label,
+        label: split ? r.label.slice(0, -4) : r.label,
+        unit: split ? ' kr.' : '',
         count: n,
         pressed: state.budget === r.id,
         empty: n === 0 && r.id !== 'all',
@@ -1080,7 +1138,7 @@ for (const dlg of [dlgLogin, dlgItem, dlgCats, dlgSettings]) {
 
 function showModal(dlg, focusEl) {
   if (!dlg.open) dlg.showModal();
-  if (focusEl) requestAnimationFrame(() => focusEl.focus());
+  focusEl?.focus();
 }
 
 /* ---------- login ---------- */
@@ -1106,7 +1164,8 @@ $('#login-form').addEventListener('submit', async (e) => {
   btn.disabled = true;
   btn.textContent = 'Skrái inn…';
   try {
-    await api('/api/admin/login', { method: 'POST', body: { code } });
+    const claudeKey = $('#login-claude-key')?.value.trim() || '';
+    await api('/api/admin/login', { method: 'POST', body: backend ? { code, claudeKey } : { code } });
     dlgLogin.close();
     if (/[?&]admin\b/.test(location.search) || location.hash === '#admin') {
       try {
@@ -1228,7 +1287,9 @@ function openItemDialog(id) {
   $('#lookup-results').replaceChildren();
   $('#lookup-hint').textContent = state.aiSearch
     ? 'Við leitum að verði, verslunum og mynd á netinu. Hlekkur beint á vöruna gefur nákvæmustu niðurstöðuna.'
-    : 'Ábending: það virkar best að líma inn hlekk á vöruna';
+    : backend
+      ? 'Sjálfvirk leit þarf Claude API-lykil (settu hann inn við innskráningu). Annars fyllirðu út hér fyrir neðan.'
+      : 'Ábending: það virkar best að líma inn hlekk á vöruna';
 
   const defaultCat = state.category !== 'all' ? state.category : state.categories[0]?.id || 'annad';
   fillCategorySelect(item ? categoryOf(item).id : defaultCat);
@@ -1839,6 +1900,7 @@ window.addEventListener('hashchange', () => {
 });
 
 async function init() {
+  await initBackend();
   loadPrefs();
   renderAll(); // skeleton
   await refreshAll();
