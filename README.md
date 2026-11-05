@@ -1,6 +1,7 @@
 # Óskalisti 🎁
 
-Vefsíða með óskalistanum okkar svo vinir og fjölskylda viti hvað má gefa okkur í gjöf.
+Vefsíða með óskalistanum okkar svo vinir og fjölskylda viti hvað má gefa okkur í gjöf –
+hvort sem það er í jólagjöf, afmælisgjöf, innflutningsgjöf eða við önnur tilefni.
 
 ## Hvað getur síðan gert?
 
