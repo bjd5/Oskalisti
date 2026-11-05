@@ -124,6 +124,12 @@
         <div class="field">
           <label for="login-code">Aðgangskóði</label>
           <input id="login-code" name="code" type="password" autocomplete="current-password" required>
+          <p class="muted small github-only">Á GitHub Pages er aðgangskóðinn GitHub-lykill (fine-grained token) með skrifaðgang að repoinu. Hann er bara geymdur í þessum vafra.</p>
+        </div>
+        <div class="field github-only">
+          <label for="login-claude-key">Claude API-lykill <span class="muted">(valfrjálst)</span></label>
+          <input id="login-claude-key" name="claudeKey" type="password" autocomplete="off" placeholder="sk-ant-…">
+          <p class="muted small">Þarf fyrir sjálfvirka leit að verði, verslun og mynd. Geymdur bara í þessum vafra.</p>
         </div>
         <p id="login-error" class="form-error" role="alert" hidden></p>
       </div>

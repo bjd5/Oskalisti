@@ -343,7 +343,36 @@ function defaultError(status) {
   return 'Eitthvað fór úrskeiðis. Reyndu aftur.';
 }
 
-async function api(path, { method = 'GET', body, signal } = {}) {
+// Which backend answers /api/* – the Node server (default) or, on GitHub Pages, the in-browser
+// GitHub backend (see github-backend.js). Decided from config.json at startup.
+let backend = null;
+
+async function initBackend() {
+  let config = null;
+  try {
+    const res = await fetch('config.json', { cache: 'no-store' });
+    if (res.ok) config = await res.json();
+  } catch {
+    /* no config → Node server */
+  }
+  if (config?.backend === 'github') {
+    const { createGitHubBackend } = await import('./github-backend.js');
+    backend = createGitHubBackend(config.github);
+    document.documentElement.dataset.backend = 'github';
+  }
+}
+
+async function api(path, opts = {}) {
+  if (!backend) return serverApi(path, opts);
+  try {
+    return await backend.request(path, opts);
+  } catch (err) {
+    if (opts.signal?.aborted || err?.name === 'AbortError') throw err;
+    throw new ApiError(err?.message || defaultError(err?.status ?? 0), err?.status ?? 0);
+  }
+}
+
+async function serverApi(path, { method = 'GET', body, signal } = {}) {
   let res;
   let text = '';
   try {
@@ -1135,7 +1164,8 @@ $('#login-form').addEventListener('submit', async (e) => {
   btn.disabled = true;
   btn.textContent = 'Skrái inn…';
   try {
-    await api('/api/admin/login', { method: 'POST', body: { code } });
+    const claudeKey = $('#login-claude-key')?.value.trim() || '';
+    await api('/api/admin/login', { method: 'POST', body: backend ? { code, claudeKey } : { code } });
     dlgLogin.close();
     if (/[?&]admin\b/.test(location.search) || location.hash === '#admin') {
       try {
@@ -1257,7 +1287,9 @@ function openItemDialog(id) {
   $('#lookup-results').replaceChildren();
   $('#lookup-hint').textContent = state.aiSearch
     ? 'Við leitum að verði, verslunum og mynd á netinu. Hlekkur beint á vöruna gefur nákvæmustu niðurstöðuna.'
-    : 'Ábending: það virkar best að líma inn hlekk á vöruna';
+    : backend
+      ? 'Sjálfvirk leit þarf Claude API-lykil (settu hann inn við innskráningu). Annars fyllirðu út hér fyrir neðan.'
+      : 'Ábending: það virkar best að líma inn hlekk á vöruna';
 
   const defaultCat = state.category !== 'all' ? state.category : state.categories[0]?.id || 'annad';
   fillCategorySelect(item ? categoryOf(item).id : defaultCat);
@@ -1868,6 +1900,7 @@ window.addEventListener('hashchange', () => {
 });
 
 async function init() {
+  await initBackend();
   loadPrefs();
   renderAll(); // skeleton
   await refreshAll();
