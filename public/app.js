@@ -343,8 +343,8 @@ function defaultError(status) {
   return 'Eitthvað fór úrskeiðis. Reyndu aftur.';
 }
 
-// Which backend answers /api/* – the Node server (default) or, on GitHub Pages, the in-browser
-// GitHub backend (see github-backend.js). Decided from config.json at startup.
+// Which backend answers /api/* – the Node server (default) or, on GitHub Pages, the Google
+// Sheets backend (see sheets-backend.js). Decided from config.json at startup.
 let backend = null;
 
 async function initBackend() {
@@ -355,10 +355,9 @@ async function initBackend() {
   } catch {
     /* no config → Node server */
   }
-  if (config?.backend === 'github') {
-    const { createGitHubBackend } = await import('./github-backend.js');
-    backend = createGitHubBackend(config.github);
-    document.documentElement.dataset.backend = 'github';
+  if (config?.backend === 'sheets') {
+    const { createSheetsBackend } = await import('./sheets-backend.js');
+    backend = createSheetsBackend(config.sheets);
   }
 }
 
@@ -808,9 +807,10 @@ function renderList() {
       state.admin
         ? h('p', null, 'Smelltu á „+ Bæta við gjöf“ til að setja fyrstu gjöfina á listann.')
         : h('p', null, 'Við erum að setja saman óskalistann – kíktu aftur fljótlega!'),
-      state.admin
-        ? h('button', { type: 'button', class: 'btn btn-primary', onclick: () => openItemDialog(null) }, '+ Bæta við gjöf')
-        : null,
+      // replaceChildren() would print a literal "null", so only spread the button in when needed.
+      ...(state.admin
+        ? [h('button', { type: 'button', class: 'btn btn-primary', onclick: () => openItemDialog(null) }, '+ Bæta við gjöf')]
+        : []),
     );
   } else {
     empty.replaceChildren(
@@ -1164,8 +1164,7 @@ $('#login-form').addEventListener('submit', async (e) => {
   btn.disabled = true;
   btn.textContent = 'Skrái inn…';
   try {
-    const claudeKey = $('#login-claude-key')?.value.trim() || '';
-    await api('/api/admin/login', { method: 'POST', body: backend ? { code, claudeKey } : { code } });
+    await api('/api/admin/login', { method: 'POST', body: { code } });
     dlgLogin.close();
     if (/[?&]admin\b/.test(location.search) || location.hash === '#admin') {
       try {
@@ -1287,9 +1286,7 @@ function openItemDialog(id) {
   $('#lookup-results').replaceChildren();
   $('#lookup-hint').textContent = state.aiSearch
     ? 'Við leitum að verði, verslunum og mynd á netinu. Hlekkur beint á vöruna gefur nákvæmustu niðurstöðuna.'
-    : backend
-      ? 'Sjálfvirk leit þarf Claude API-lykil (settu hann inn við innskráningu). Annars fyllirðu út hér fyrir neðan.'
-      : 'Ábending: það virkar best að líma inn hlekk á vöruna';
+    : 'Ábending: það virkar best að líma inn hlekk á vöruna';
 
   const defaultCat = state.category !== 'all' ? state.category : state.categories[0]?.id || 'annad';
   fillCategorySelect(item ? categoryOf(item).id : defaultCat);

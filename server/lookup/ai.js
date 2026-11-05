@@ -1,13 +1,13 @@
 // AI search path: Claude with server-side web search/fetch finds where an item can be
 // bought and reports the offers through a strict custom tool (`report_products`).
-// The prompt, tools and loop live in public/shared/ai-core.js (also used in the browser).
+// The prompt, tools and loop live in ai-core.js.
 
 import Anthropic from '@anthropic-ai/sdk';
 import {
   DEFAULT_MODEL,
   buildRequest as buildCoreRequest,
   runAiLookup,
-} from '../../public/shared/ai-core.js';
+} from './ai-core.js';
 
 export {
   DEFAULT_MODEL,
@@ -18,7 +18,7 @@ export {
   normalizeAiProducts,
   parseJsonFallback,
   contentForEcho,
-} from '../../public/shared/ai-core.js';
+} from './ai-core.js';
 
 export function getModel() {
   return process.env.ANTHROPIC_MODEL || DEFAULT_MODEL;

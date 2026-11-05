@@ -1,9 +1,6 @@
 {
-  "backend": "github",
-  "github": {
-    "owner": "bjd5",
-    "repo": "Oskalisti",
-    "branch": "main",
-    "dataPath": "public/data/oskalisti.json"
+  "backend": "sheets",
+  "sheets": {
+    "url": ""
   }
 }
