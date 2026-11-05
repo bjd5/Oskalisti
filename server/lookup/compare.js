@@ -215,6 +215,12 @@ export function isSameProductByName(base, candidate, brand = '') {
   );
 }
 
+/** Words in `candidate` that are not in `base` (sizes and brand ignored). */
+function extraWords(base, candidate, brand = '') {
+  const a = productTokens(`${base} ${brand}`);
+  return productTokens(candidate).filter((w) => !/^\d+$/.test(w) && !hasWord(a, w)).length;
+}
+
 /** Short search phrase from a name: its longest word (minus brand and codes) plus its numbers. */
 export function nameQuery(name, brand = '') {
   let cleaned = String(name || '').replace(/\s[-–|]\s[^-–|]*$/, ''); // colour / shop suffix
@@ -304,29 +310,116 @@ async function searchLifOgList(fetchPage, ident, opts) {
   );
 }
 
-/** Shops on the Roanuz/Magento platform (Kúnígúnd, Byggt og búið): the brand page lists products. */
+// Kúnígúnd's product sitemap lists every product of the Roanuz shops. They share one Magento
+// backend and the same product URLs (Byggt og búið's own sitemap is empty), so it is used for both.
+const ROANUZ_SITEMAP = 'https://kunigund.is/sitemaps/products.xml';
+const SITEMAP_TTL_MS = 6 * 60 * 60 * 1000;
+let sitemapCache = null; // { at, paths } once loaded, or { pending: Promise } while loading
+
+async function roanuzSitemapPaths(fetchPage, opts) {
+  if (sitemapCache?.pending) return sitemapCache.pending;
+  if (sitemapCache && Date.now() - sitemapCache.at < SITEMAP_TTL_MS) return sitemapCache.paths;
+  const pending = fetchPage(ROANUZ_SITEMAP, { ...opts, timeoutMs: 25_000 }).then(
+    (page) => {
+      const paths = [...String(page.text).matchAll(/<loc>\s*https?:\/\/[^/<]+\/([^<\s]+)\s*<\/loc>/g)].map((m) => m[1]);
+      sitemapCache = { at: Date.now(), paths };
+      return paths;
+    },
+    (err) => {
+      sitemapCache = null;
+      throw err;
+    },
+  );
+  sitemapCache = { pending };
+  return pending;
+}
+
+/** Product pages in the sitemap whose URL has the brand, all the sizes and the main word(s). */
+export function sitemapCandidates(paths, ident, max = 3) {
+  const brandSlug = slugifyBrand(ident.brand || '');
+  const wanted = productTokens(nameQuery(ident.name, ident.brand));
+  const numbers = wanted.filter((w) => /^\d+$/.test(w));
+  const words = wanted.filter((w) => !/^\d+$/.test(w));
+  if (!brandSlug || !wanted.length) return [];
+  const scored = [];
+  for (const path of Array.isArray(paths) ? paths : []) {
+    if (!path.startsWith(`${brandSlug}-`)) continue;
+    const tokens = productTokens(path.replace(/\.html?$/, '').replace(/[-_/]+/g, ' '));
+    if (numbers.some((n) => !tokens.includes(n))) continue;
+    const matched = words.filter((w) => hasWord(tokens, w)).length;
+    if (words.length && !matched) continue;
+    scored.push({ path, score: matched, length: tokens.length });
+  }
+  return scored
+    .sort((a, b) => b.score - a.score || a.length - b.length)
+    .slice(0, max)
+    .map((x) => x.path);
+}
+
+const roanuzImage = (p) => {
+  const [, , stamp] = p.galleryMeta.split(';');
+  const sku = p.ids.find((id) => /^[A-Z]{2,4}-/.test(id)) || p.ids[0] || '';
+  return p.image || (stamp && sku ? `https://d21glh60bk8ucb.cloudfront.net/product_images_v1/${sku}/${stamp}/web/large2x_0.jpeg` : '');
+};
+
+/**
+ * Shops on the Roanuz/Magento platform (Kúnígúnd, Byggt og búið). Their search is rendered with
+ * JavaScript, so: (1) the brand page, which lists part of the brand's products, and (2) if that
+ * doesn't give the same model number, product pages found in the sitemap. A product page lists
+ * its variants (e.g. every colour of a pot, each with its own article number); variants have no
+ * page of their own, so they link to the product page.
+ */
 function roanuzShop(base) {
   return async (fetchPage, ident, opts) => {
     if (!ident.brand) return [];
-    const page = await fetchPage(`${base}/brand/${slugifyBrand(ident.brand)}`, opts);
-    return nextDataProducts(page.text)
-      .filter((p) => p.urlKey)
-      .map((p) => {
-        const [, , stamp] = p.galleryMeta.split(';');
-        const sku = p.ids.find((id) => /^[A-Z]{2,4}-/.test(id)) || p.ids[0] || '';
-        return {
+    const out = [];
+    let lastError = null;
+    try {
+      const page = await fetchPage(`${base}/brand/${slugifyBrand(ident.brand)}`, opts);
+      for (const p of nextDataProducts(page.text).filter((x) => x.urlKey)) {
+        out.push({
           name: p.name,
           url: `${base}/${p.urlKey}${p.urlSuffix || '.html'}`,
           price: p.price,
-          imageUrl:
-            p.image ||
-            (stamp && sku
-              ? `https://d21glh60bk8ucb.cloudfront.net/product_images_v1/${sku}/${stamp}/web/large2x_0.jpeg`
-              : ''),
+          imageUrl: roanuzImage(p),
           brand: ident.brand,
           ids: p.ids,
-        };
+        });
+      }
+    } catch (err) {
+      if (opts?.signal?.aborted) throw err;
+      lastError = err;
+    }
+    if (ident.codes.length && out.some((c) => matchCandidate(ident, c)?.kind === 'code')) return out;
+
+    try {
+      const paths = sitemapCandidates(await roanuzSitemapPaths(fetchPage, opts), ident);
+      const pages = await Promise.allSettled(paths.map((path) => fetchPage(`${base}/${path}`, opts)));
+      pages.forEach((res, i) => {
+        if (res.status !== 'fulfilled') return;
+        const pageUrl = `${base}/${paths[i]}`;
+        const main = parseProductHtml(res.value.text, pageUrl);
+        if (!main.name || /^404\b/.test(main.name)) return;
+        for (const p of nextDataProducts(res.value.text)) {
+          // Variants of this product link to its page; other products shown on it (related
+          // items) link to their own page.
+          const variant = isSameProductByName(main.name, p.name, ident.brand) || !p.urlKey;
+          out.push({
+            name: p.name,
+            url: variant ? pageUrl : `${base}/${p.urlKey}${p.urlSuffix || '.html'}`,
+            price: p.price,
+            imageUrl: roanuzImage(p) || (variant ? main.imageUrl : ''),
+            brand: ident.brand,
+            ids: p.ids,
+          });
+        }
       });
+    } catch (err) {
+      if (opts?.signal?.aborted) throw err;
+      lastError = lastError || err;
+    }
+    if (!out.length && lastError) throw lastError;
+    return out;
   };
 }
 
@@ -428,8 +521,12 @@ export async function compareWith(fetchPage, { name, url = '' }, { signal, shops
     for (const cand of res.value) {
       const m = matchCandidate(ident, cand);
       if (!m || !(cand.price > 0)) continue;
+      // Name matches: the closest name wins (fewest extra words, e.g. not "… lágur"), then the price.
+      const extra = m.kind === 'name' ? extraWords(ident.name, cand.name, ident.brand) : 0;
       const better =
-        !best || (m.kind === 'code' && best.match !== 'code') || (m.kind === best.match && cand.price < best.price);
+        !best ||
+        (m.kind === 'code' && best.match !== 'code') ||
+        (m.kind === best.match && (extra < best.extra || (extra === best.extra && cand.price < best.price)));
       if (better) {
         best = {
           name: cand.name,
@@ -440,12 +537,14 @@ export async function compareWith(fetchPage, { name, url = '' }, { signal, shops
           originalPrice: Math.round(cand.price),
           imageUrl: cand.imageUrl || '',
           match: m.kind,
+          extra,
           ...(m.kind === 'code' ? { matchCode: ident.displayCodes[ident.codes.indexOf(m.code)] || m.code } : {}),
         };
       }
     }
     if (best) offers.push(best);
   });
+  for (const o of offers) delete o.extra;
   offers.sort((a, b) => a.price - b.price);
   return {
     offers,

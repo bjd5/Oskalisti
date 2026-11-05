@@ -42,8 +42,9 @@ GitHub Pages getur ekki vistað neitt sjálft, svo **óskalistinn er geymdur í 
     „Global Nakiri hnífur 18cm“ hjá Kúnígúnd en „Grænmetishnífur 18cm - G-5“ hjá Líf og List – eða
     vörunúmer Le Creuset). Ef vörunúmer vantar er borið saman eftir merki, stærð og nafni og það
     merkt „Líklega sama vara“.
-  - Hjá Kúnígúnd og Byggt og búið sést aðeins hluti vörumerkjasíðunnar án JavaScript, svo stundum
-    finnst vara þar ekki þó hún sé til.
+  - Hjá Kúnígúnd og Byggt og búið er leitað á vörumerkjasíðunni og, ef þarf, í vörukorti (sitemap)
+    Kúnígúnd, sem nær yfir allar vörur beggja. Litaafbrigði (t.d. Le Creuset pottur í Cerise) hafa
+    ekki eigin síðu þar, svo hlekkurinn fer á vörusíðuna þar sem liturinn er valinn.
   - Fleiri verslunum má bæta við í `server/lookup/compare.js` (`SHOPS`).
 
 ### Uppsetning (einu sinni, um 5 mínútur)

@@ -153,3 +153,62 @@ test('free-text search across shops ("Finna" without a link)', async () => {
   assert.ok(results.every((r) => !/G-81|G-57|GLO-G81/.test(r.name)));
   assert.equal(await searchShops(fetchPage, '   ', { logger: null }).then((r) => r.length), 0);
 });
+
+test('sitemap: finds the product page by brand, size and main word', async () => {
+  const { sitemapCandidates } = await import('../server/lookup/compare.js');
+  const paths = [
+    'le-creuset-pottur-24cm-6-0l-ceramic.html',
+    'le-creuset-steypujarnspottar-24-cm.html',
+    'le-creuset-steypujarnspottur-26cm-djupur.html',
+    'le-creuset-steypujarnspanna-24cm.html',
+    'kuchenprofi-pottur-steypujarn-24cm.html',
+  ];
+  assert.deepEqual(
+    sitemapCandidates(paths, { name: 'SIGNATURE STEYPUJÁRNSPOTTUR 24 CM - CERISE', brand: 'Le Creuset', codes: [] }),
+    ['le-creuset-steypujarnspottar-24-cm.html'],
+  );
+});
+
+test('Kúnígúnd/Byggt og búið: product missing from the brand page is found through the sitemap', async () => {
+  const lcPage = roanuzBrand([
+    { name: 'Le Creuset Steypujárnspottar 24 cm', sku: 'LEC-STEYPUJARNSPO-24', urlKey: 'le-creuset-steypujarnspottar-24-cm', price: 53995 },
+    { name: 'Le Creuset Steypujárnspottur 24cm Cerise', sku: 'LEC-21177240602430', urlKey: 'le-creuset-steypujarnspottur-24cm-cerise', price: 56995 },
+    { name: 'Le Creuset Steypujárnspottur 24cm Volcanic', sku: 'LEC-21177240902430', urlKey: 'le-creuset-steypujarnspottur-24-cm-volcanic', price: 56995 },
+    { name: 'Le Creuset Pönnuhreinsir', sku: 'LEC-74181', urlKey: 'le-creuset-ponnuhreinsir', price: 6995 },
+  ]).replace('<body>', '<body><h1>Le Creuset Steypujárnspottar 24 cm</h1>');
+  const lolUrl = 'https://www.lifoglist.is/vorur/pottur-24cm-raudur';
+  const { fetchPage, fetched } = fakeFetch({
+    [lolUrl]: lifoglistProduct({ name: 'SIGNATURE STEYPUJÁRNSPOTTUR 24 CM - CERISE', slug: 'pottur-24cm-raudur', price: 56990, sku: 'lec55101', foreignSku: '21177240602430', brand: 'Le Creuset' }),
+    'https://kunigund.is/brand/le-creuset': roanuzBrand([{ name: 'Le Creuset Steypujárnspottur 31cm', sku: 'LEC-21178310602430', urlKey: 'lc-31', price: 72995 }]),
+    'https://byggtogbuid.is/brand/le-creuset': roanuzBrand([]),
+    'https://kunigund.is/sitemaps/products.xml': `<?xml version="1.0"?><urlset>${[
+      'le-creuset-steypujarnspanna-24cm.html',
+      'le-creuset-steypujarnspottar-24-cm.html',
+    ].map((p) => `<url><loc>https://kunigund.is/${p}</loc></url>`).join('')}</urlset>`,
+    'https://kunigund.is/le-creuset-steypujarnspottar-24-cm.html': lcPage,
+    'https://byggtogbuid.is/le-creuset-steypujarnspottar-24-cm.html': lcPage,
+    'https://kokka.is/?s=STEYPUJÁRNSPOTTUR%2024&post_type=product': kokkaSearch([]),
+  });
+  const res = await compareWith(fetchPage, { name: 'SIGNATURE STEYPUJÁRNSPOTTUR 24 CM - CERISE', url: lolUrl }, { logger: null });
+  // Same price at both, so their order doesn't matter.
+  assert.deepEqual(
+    res.offers.map((o) => [o.store, o.price, o.matchCode, o.url]).sort(),
+    [
+      ['Byggt og búið', 56995, '21177240602430', 'https://byggtogbuid.is/le-creuset-steypujarnspottar-24-cm.html'],
+      ['Kúnígúnd', 56995, '21177240602430', 'https://kunigund.is/le-creuset-steypujarnspottar-24-cm.html'],
+    ],
+  );
+  assert.equal(fetched.filter((u) => u.includes('sitemaps')).length <= 1, true, 'the sitemap is fetched once and reused');
+});
+
+test('name match picks the closest name, not just the cheapest (e.g. not the "lágur" pot)', async () => {
+  const { fetchPage } = fakeFetch({
+    ['https://www.lifoglist.is/leit?q=' + encodeURIComponent('STEYPUJÁRNSPOTTUR 24')]: lifoglistSearch([
+      { name: 'SIGNATURE STEYPUJÁRNSPOTTUR 24 CM LÁGUR - CERISE', slug: 'lagur', price: 49990, sku: 'x1', foreignSku: '', brand: 'Le Creuset' },
+      { name: 'SIGNATURE STEYPUJÁRNSPOTTUR 24 CM - CERISE', slug: 'venjulegur', price: 56990, sku: 'x2', foreignSku: '', brand: 'Le Creuset' },
+    ]),
+  });
+  const res = await compareWith(fetchPage, { name: 'Le Creuset Signature STEYPUJÁRNSPOTTUR 24 CM' }, { logger: null });
+  const lol = res.offers.find((o) => o.store === 'Líf og List');
+  assert.equal(lol.url, 'https://www.lifoglist.is/vorur/venjulegur');
+});
